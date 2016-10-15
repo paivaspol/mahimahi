@@ -41,14 +41,14 @@ ReverseProxy::ReverseProxy( const Address & frontend_address,
 
       run( { path_to_proxy, frontend_arg.str(), https_backend_arg.str(),
           path_to_proxy_key, path_to_proxy_cert, client_cert_arg.str(),
-          "-k", "--daemon", "--pid-file=" + pidfile_.name() } );
+          "-k", "--daemon", "--pid-file=" + pidfile_.name(), "--no-server-push" } );
     } else {
       // Handle HTTP case
       stringstream http_backend_arg;
       http_backend_arg << "-b" << backend_address.ip() << ",80";
       run( { path_to_proxy, frontend_arg.str(), 
           http_backend_arg.str(), path_to_proxy_key, path_to_proxy_cert, 
-          "--daemon", "--pid-file=" + pidfile_.name() } );
+          "--daemon", "--pid-file=" + pidfile_.name(), "--no-server-push" } );
     }
 }
 
@@ -78,7 +78,7 @@ ReverseProxy::ReverseProxy( const Address & frontend_address,
       run( { path_to_proxy, frontend_arg.str(), https_backend_arg.str(),
         path_to_proxy_key, path_to_proxy_cert, client_cert_arg.str(),
         "--dependency-filename", path_to_dependency_file, "--daemon",
-        "-k", "--pid-file=" + pidfile_.name() } );
+        "-k", "--pid-file=" + pidfile_.name(), "--no-server-push" } );
     } else {
       // Handle HTTP case
       stringstream http_backend_arg;
@@ -86,7 +86,7 @@ ReverseProxy::ReverseProxy( const Address & frontend_address,
       run( { path_to_proxy, frontend_arg.str(), 
           http_backend_arg.str(), path_to_proxy_key, path_to_proxy_cert, 
           "--dependency-filename", path_to_dependency_file, "--daemon",
-          "--pid-file=" + pidfile_.name() } );
+          "--pid-file=" + pidfile_.name(), "--no-server-push" } );
     }
 }
 
