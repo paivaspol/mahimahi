@@ -46,7 +46,7 @@ void VPN::write_config_file(const string & path_to_security_files,
     const vector<Address> & nameservers) {
   cout << "OpenVPN config file: " << config_file_.name() << endl;
   config_file_.write("port 1194\n");  // Just listen to the default port.
-  config_file_.write("proto udp\n");  // On UDP
+  config_file_.write("proto tcp\n");  // On UDP
   config_file_.write("dev tun\n");    // On |tun| mode
 
   // Setup CA, certificate, and key.

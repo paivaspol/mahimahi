@@ -95,7 +95,8 @@ int main( int argc, char *argv[] )
 
         /* set up DNAT between eth0 to ingress address. */
         int vpn_port = atoi(argv[6]);
-        DNATWithPostrouting dnat( Address(ingress_addr.ip(), vpn_port), "udp", vpn_port );
+        // DNATWithPostrouting dnat( Address(ingress_addr.ip(), vpn_port), "udp", vpn_port );
+        DNATWithPostrouting dnat( Address(ingress_addr.ip(), vpn_port), "tcp", vpn_port );
 
         /* set up NAT between egress and eth0 */
         NAT nat_rule( ingress_addr );

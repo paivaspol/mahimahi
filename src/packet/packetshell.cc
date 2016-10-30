@@ -52,7 +52,8 @@ PacketShell<FerryQueueType>::PacketShell( const std::string & device_prefix, cha
       egress_tun_( device_prefix + "-" + to_string( getpid() ) , egress_addr(), ingress_addr() ),
       dns_outside_( egress_addr(), nameserver_, nameserver_ ),
       nat_rule_(),
-      dnat_rule_( Address(ingress_addr().ip(), destination_port), "udp", destination_port ),
+      // dnat_rule_( Address(ingress_addr().ip(), destination_port), "udp", destination_port ),
+      dnat_rule_( Address(ingress_addr().ip(), destination_port), "tcp", destination_port ),
       pipe_( UnixDomainSocket::make_pair() ),
       event_loop_()
 {
@@ -124,8 +125,6 @@ void PacketShell<FerryQueueType>::start_uplink_and_forward_packets_with_nameserv
             DNSProxy dns_inside_ { move( dns_udp_listener ), move( dns_tcp_listener ),
                     dns_outside_.udp_listener().local_address(),
                     dns_outside_.tcp_listener().local_address() };
-
-            cout << "udp_listener.local_address(): " << dns_outside_.udp_listener().local_address().str() << endl;
 
             dns_inside_.register_handlers( inner_ferry );
 
@@ -201,7 +200,8 @@ void PacketShell<FerryQueueType>::start_uplink_and_forward_packets
 
     cout << "ingress: " << ingress_addr().str() << " egress: " << egress_addr().str() << endl;
     /* Forward the packets to the specified port. */
-    DNAT dnat( Address(ingress_addr().ip(), destination_port), "udp", destination_port );
+    // DNAT dnat( Address(ingress_addr().ip(), destination_port), "udp", destination_port );
+    DNAT dnat( Address(ingress_addr().ip(), destination_port), "tcp", destination_port );
 
     /* Fork */
     event_loop_.add_special_child_process( 77, "packetshell", [&]() {
