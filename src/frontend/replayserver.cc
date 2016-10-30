@@ -231,6 +231,8 @@ void populate_push_configurations( const string & dependency_file,
                                    const string & current_loading_page ) {
   map< string, vector< string >> dependencies_map;
   map< string, string > dependency_type_map;
+  // ofstream myfile;
+  // myfile.open("debug.txt", ios::app);
   ifstream infile(dependency_file);
   string line;
   if (infile.is_open()) {
@@ -263,8 +265,10 @@ void populate_push_configurations( const string & dependency_file,
           + infer_resource_type(dependency_type_map[dependency_filename]);
 
         // Add push or nopush directive based on the hostname of the URL.
-        string request_hostname = strip_www( extract_hostname( request_url ));
+        string request_hostname = strip_www( extract_hostname( dependency_filename ));
+        // myfile << "request_hostname: " << request_hostname << " request_url: " << dependency_filename << endl;
         if ( request_hostname != current_loading_page ) {
+          // myfile << "\tnopush" << endl;
           link_resource_string += ";nopush";
         }
 
