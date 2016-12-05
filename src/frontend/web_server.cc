@@ -35,6 +35,9 @@ void write_config_file(TempFile & config_file,
     config_file.write( "RecordingDir " + record_path + "\n" );
     config_file.write( "LoadingPage " + page + "\n");
 
+    /* limit number of child process to 1 */
+    config_file.write( "MaxRequestWorkers 1\n" );
+
     /* add pid file, log files, user/group name, and listen line to config file and run apache */
     config_file.write( "PidFile /tmp/replayshell_apache_pid." + to_string( getpid() ) + "." + to_string( random() ) + "\n" );
     /* Apache will check if this file exists before clobbering it,

@@ -252,6 +252,7 @@ void populate_push_configurations( const string & dependency_file,
     // Write the dependencies to the configuration file.
     string removed_slash_request_url = remove_trailing_slash(request_url);
     vector< string > link_resources;
+    vector< string > unimportant_resources;
     if (dependencies_map.find(removed_slash_request_url) != dependencies_map.end()) {
       auto key = removed_slash_request_url;
       auto values = dependencies_map[key];
@@ -264,14 +265,14 @@ void populate_push_configurations( const string & dependency_file,
           string dependency_type = dependency_type_map[dependency_filename];
           string link_resource_string = "<" + dependency_filename + ">;rel=preload"
             + infer_resource_type(dependency_type_map[dependency_filename]);
-
           // Add push or nopush directive based on the hostname of the URL.
           string request_hostname = strip_www( extract_hostname( dependency_filename ));
           if ( request_hostname != current_loading_page ) {
             link_resource_string += ";nopush";
           }
-
           link_resources.push_back(link_resource_string);
+        } else {
+          unimportant_resources.push_back(dependency_filename);
         }
       }
     }
@@ -283,6 +284,14 @@ void populate_push_configurations( const string & dependency_file,
       }
       string link_string = "Link: " + link_string_value.substr(0, link_string_value.size() - 2);
       response.add_header_after_parsing(link_string);
+    }
+    if (unimportant_resources.size() > 0) {
+      string unimportant_resource_value = "";
+      for (auto it = unimportant_resources.begin(); it != unimportant_resources.end(); ++it) {
+        unimportant_resource_value += *it + ",";
+      }
+      string x_systemname_unimportant_resource_string = "x-systemname-unimportant: " + unimportant_resource_value.substr(0, unimportant_resource_value.size() - 1);
+      response.add_header_after_parsing(x_systemname_unimportant_resource_string);
     }
   }
 }

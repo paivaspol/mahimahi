@@ -152,6 +152,7 @@ void PacketShell<FerryQueueType>::start_uplink_and_forward_packets_with_nameserv
             const vector< Address > nameservers = { nameserver_address };
             VPN vpn(path_to_security_files, ingress_addr(), nameservers);
             vector< string > vpn_command = vpn.start_command();
+
             command.empty(); // so that the compiler doesn't complain about unused variable.
 
             /* restore environment */

@@ -40,6 +40,10 @@ ReverseProxy::ReverseProxy( const Address & frontend_address,
     config_file_.write("daemon=yes\n");
     config_file_.write("pid-file=" + pidfile_.name() + "\n");
 
+    /* limit the concurrent backend connection to 1 */
+    config_file_.write("backend-connections-per-frontend=1\n");
+    // config_file_.write("backend-connections-per-host=1\n");
+
     if (backend_address.port() == 443) {
       // Handle HTTPS
       config_file_.write("backend=" + backend_address.ip() + "," + 
