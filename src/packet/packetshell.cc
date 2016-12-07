@@ -158,7 +158,6 @@ void PacketShell<FerryQueueType>::start_uplink_and_forward_packets_with_nameserv
             /* restore environment */
             environ = user_environment_;
 
-
             /* set MAHIMAHI_BASE if not set already to indicate outermost container */
             SystemCall( "setenv", setenv( "MAHIMAHI_BASE",
                                           egress_addr().ip().c_str(),
