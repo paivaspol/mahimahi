@@ -68,16 +68,16 @@ ReverseProxy::~ReverseProxy()
     if ( moved_away_ ) { return; }
 
     try {
-      // ifstream pidfile (pidfile_.name());
-      // string line;
-      // if (pidfile.is_open()) {
-      //   getline(pidfile, line);
-      // }
-      // pidfile.close();
-      // int pid_int = atoi(line.c_str());
-      // if (kill(pid_int, 0) != 0) {
-      //   kill(pid_int, SIGTERM);
-      // }
+      ifstream pidfile (pidfile_.name());
+      string line;
+      if (pidfile.is_open()) {
+        getline(pidfile, line);
+      }
+      pidfile.close();
+      int pid_int = atoi(line.c_str());
+      if (pid_int != 0) {
+        kill(pid_int, SIGTERM);
+      }
     } catch ( const exception & e ) {
       print_exception( e );
     }
