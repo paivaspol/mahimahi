@@ -78,7 +78,7 @@ ReverseProxy::ReverseProxy( const Address & frontend_address,
     // listen
     config_file_.write("    listen:\n");
 
-//     config_file_.write("      port:  8081\n");
+    config_file_.write("      host: " + frontend_address.ip() + "\n");
     config_file_.write("      port: " + to_string(frontend_address.port()) + "\n");
 
     config_file_.write("      ssl:\n");
@@ -93,6 +93,26 @@ ReverseProxy::ReverseProxy( const Address & frontend_address,
     config_file_.write("        proxy.reverse.url: \"http://" + backend_address.ip() + ":" +
         to_string(backend_address.port()) + "\"\n");
 
+/*
+    // listen
+    config_file_.write("listen:\n");
+
+    config_file_.write("  host: " + frontend_address.ip() + "\n");
+    config_file_.write("  port: " + to_string(frontend_address.port()) + "\n");
+
+    config_file_.write("  ssl:\n");
+    config_file_.write("    certificate-file: " + path_to_proxy_cert + "\n");
+    config_file_.write("    key-file: " + path_to_proxy_key + "\n");
+
+    // path
+    config_file_.write("  paths:\n");
+
+    config_file_.write("    /:\n");
+
+    config_file_.write("      proxy.reverse.url: \"http://" + backend_address.ip() + ":" +
+        to_string(backend_address.port()) + "\"\n");
+*/
+
     // casper
     config_file_.write("http2-casper:\n");
     config_file_.write("   capacity-bits:  13\n");
@@ -102,8 +122,8 @@ ReverseProxy::ReverseProxy( const Address & frontend_address,
     config_file_.write("access-log: " + path_prefix + "/error-logs/" + page + ".log\n");
     config_file_.write("error-log: " + path_prefix + "/error-logs/" + page + ".log\n");
 
-    //run( { path_to_proxy, "-c" ,  config_file_.name() , "-m", "daemon" } );
-    run( { path_to_proxy, "-c" ,  config_file_.name() } );
+    run( { path_to_proxy, "-m", "daemon", "-c" ,  config_file_.name() } );
+    //run( { path_to_proxy, "-c" ,  config_file_.name() } );
 
 }
 
