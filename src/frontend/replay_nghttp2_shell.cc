@@ -67,6 +67,7 @@ int main( int argc, char *argv[] )
 
         /* Get the application variables. */
         string nghttpx_path = string(argv[ 2 ]);
+	cout << nghttpx_path << "\n#############" << endl;
         string nghttpx_key_path = string(argv[ 4 ]);
         string nghttpx_cert_path = string(argv[ 5 ]);
 
@@ -266,6 +267,8 @@ int main( int argc, char *argv[] )
               /* set up nghttpx proxies */
               vector< ReverseProxy > reverse_proxies;
 
+	      nghttpx_path = "./h2o";	
+
               // Do the default one.
               reverse_proxies.emplace_back(http_default_reverse_proxy_address,
                                         http_default_webserver_address,
@@ -296,7 +299,7 @@ int main( int argc, char *argv[] )
                                           escaped_page );
               }
 
-              PacFile pac_file("/home/vaspol/Sites/config_testing.pac");
+              PacFile pac_file("/home/ubuntu/Sites/config_testing.pac");
               cout << hostname_to_reverse_proxy_addresses.size() << endl;
               // pac_file.WriteProxies(hostname_to_reverse_proxy_addresses,
               //                       hostname_to_reverse_proxy_names);
