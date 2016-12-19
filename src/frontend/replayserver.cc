@@ -295,7 +295,9 @@ void populate_push_configurations( const string & dependency_file,
           }
           link_resources.push_back(link_resource_string);
         } else {
-          unimportant_resources.push_back(dependency_filename);
+          string unimportant_resource_string = dependency_filename + ";" +
+                                               dependency_type_map[dependency_filename];
+          unimportant_resources.push_back(unimportant_resource_string);
         }
       }
     }
