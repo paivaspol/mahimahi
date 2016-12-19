@@ -26,9 +26,6 @@ ReverseProxy::ReverseProxy( const Address & frontend_address,
     pidfile_("/tmp/replayshell_nghttpx.pid"),
     moved_away_(false)
 {
-    cout << "Frontend: " << frontend_address.str() << " backend: " << backend_address.str() << endl;
-    cout << "Proxy key: " << path_to_proxy_key << " Proxy cert: " << path_to_proxy_cert << endl;
-
     string path_prefix = PATH_PREFIX;
 
     config_file_.write("frontend=" + frontend_address.ip() + "," + 

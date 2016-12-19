@@ -244,14 +244,13 @@ int main( int argc, char *argv[] )
                   }
 
                   // Populate other information.
-                  cout << "Hostname: " << hostname << " reverse proxy addr: " << reverse_proxy_address.str() << endl;
+                  cout << "Hostname: " << hostname << " reverse proxy addr: " << reverse_proxy_address.str() << " host IP: " << address.str() << endl;
                   hostname_to_reverse_proxy_addresses.push_back(make_pair(hostname, reverse_proxy_address));
                   hostname_to_reverse_proxy_names.push_back(make_pair(hostname, reverse_proxy_name));
                   webserver_to_reverse_proxy_addresses.push_back(make_pair(address, reverse_proxy_address));
               }
 
               string path_to_dependency_file = argv[8];
-              cout << "Path to dependency file: " << path_to_dependency_file << endl;
 
               string escaped_page = argv[9];
 
@@ -292,7 +291,6 @@ int main( int argc, char *argv[] )
                 // actual_ip_address_to_reverse_proxy_mapping.emplace_back(webserver_address, reverse_proxy_address);
                 auto webserver_address = webserver_to_reverse_proxy_ip_pair.first;
                 auto reverse_proxy_address = webserver_to_reverse_proxy_ip_pair.second;
-                cout << "ReverseProxy address: " << reverse_proxy_address.str() << " Webserver address: " << webserver_address.str() << endl;
                 reverse_proxies.emplace_back(reverse_proxy_address,
                                           webserver_address,
                                           nghttpx_path,

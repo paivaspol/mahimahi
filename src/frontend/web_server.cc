@@ -23,7 +23,6 @@ void write_config_file(TempFile & config_file,
                        const string & working_directory, 
                        const string & record_path,
                        const string & page) {
-    cout << "Apache Config File: " << config_file.name() << " listening on: " << addr.str() <<  endl;
     config_file.write( apache_main_config );
 
     string path_prefix = PATH_PREFIX;
@@ -143,7 +142,6 @@ WebServer::WebServer( const Address & addr, const string & working_directory,
 
     // populate_push_configurations(config_file_, dependency_file);
 
-    cout << "Dependency File: " << dependency_file << endl;
     string line = "DependencyFile " + dependency_file + "\n";
     config_file_.write(line);
 
