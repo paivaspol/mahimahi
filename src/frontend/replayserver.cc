@@ -283,7 +283,7 @@ void populate_push_configurations( const string & dependency_file,
         // if (dependency_type_map[dependency_filename] == "Document" ||
         //     dependency_type_map[dependency_filename] == "Script" ||
         //     dependency_type_map[dependency_filename] == "Stylesheet") {
-        if ((dependency_priority_map[dependency_filename] == "Highest" ||
+        if ((dependency_priority_map[dependency_filename] == "VeryHigh" ||
             dependency_priority_map[dependency_filename] == "High" ||
             dependency_priority_map[dependency_filename] == "Medium") &&
             (dependency_type_map[dependency_filename] == "Document" ||
