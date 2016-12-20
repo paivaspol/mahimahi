@@ -206,11 +206,6 @@ unsigned int match_score( const MahimahiProtobufs::RequestResponse & saved_recor
         return 0;
     }
 
-    /* match user agent */
-    // if ( not header_match( "HTTP_USER_AGENT", "User-Agent", saved_request ) ) {
-    //     return 0;
-    // }
-
     string request_url = strip_hostname(extract_url_from_request_line(request_line), extract_url_from_request_line(saved_request.first_line()));
     string saved_request_url = extract_url_from_request_line(saved_request.first_line());
     // myfile.close();
@@ -254,6 +249,7 @@ void populate_push_configurations( const string & dependency_file,
                                    const string & current_loading_page ) {
   map< string, vector< string >> dependencies_map;
   map< string, string > dependency_type_map;
+  map< string, string > dependency_priority_map;
   ifstream infile(dependency_file);
   string line;
   if (infile.is_open()) {
@@ -265,8 +261,10 @@ void populate_push_configurations( const string & dependency_file,
       }
       string child = splitted_line[2];
       string resource_type = splitted_line[4];
+      string resource_priority = splitted_line[5];
       dependencies_map[parent].push_back(child);
       dependency_type_map[child] = resource_type;
+      dependency_priority_map[child] = resource_priority;
     }
     infile.close();
   }
@@ -282,9 +280,15 @@ void populate_push_configurations( const string & dependency_file,
       for (auto list_it = values.begin(); list_it != values.end(); ++list_it) {
         // Push all dependencies for the location.
         string dependency_filename = *list_it;
-        if (dependency_type_map[dependency_filename] == "Document" ||
+        // if (dependency_type_map[dependency_filename] == "Document" ||
+        //     dependency_type_map[dependency_filename] == "Script" ||
+        //     dependency_type_map[dependency_filename] == "Stylesheet") {
+        if ((dependency_priority_map[dependency_filename] == "Highest" ||
+            dependency_priority_map[dependency_filename] == "High" ||
+            dependency_priority_map[dependency_filename] == "Medium") &&
+            (dependency_type_map[dependency_filename] == "Document" ||
             dependency_type_map[dependency_filename] == "Script" ||
-            dependency_type_map[dependency_filename] == "Stylesheet") {
+            dependency_type_map[dependency_filename] == "Stylesheet")) {
           string dependency_type = dependency_type_map[dependency_filename];
           string link_resource_string = "<" + dependency_filename + ">;rel=preload"
             + infer_resource_type(dependency_type_map[dependency_filename]);
@@ -295,7 +299,7 @@ void populate_push_configurations( const string & dependency_file,
           }
           link_resources.push_back(link_resource_string);
         } else {
-          string unimportant_resource_string = dependency_filename + ";" +
+          string unimportant_resource_string = dependency_filename + ";" + 
                                                dependency_type_map[dependency_filename];
           unimportant_resources.push_back(unimportant_resource_string);
         }
