@@ -319,7 +319,7 @@ void populate_push_configurations( const string & dependency_file,
     if (unimportant_resources.size() > 0) {
       string unimportant_resource_value = "";
       for (auto it = unimportant_resources.begin(); it != unimportant_resources.end(); ++it) {
-        unimportant_resource_value += *it + ",";
+        unimportant_resource_value += *it + "|";
       }
       string x_systemname_unimportant_resource_string = "x-systemname-unimportant: " + unimportant_resource_value.substr(0, unimportant_resource_value.size() - 1);
       response.add_header_after_parsing(x_systemname_unimportant_resource_string);
