@@ -255,6 +255,7 @@ void populate_push_configurations( const string & dependency_file,
   map< string, vector< string >> dependencies_map;
   map< string, string > dependency_type_map;
   map< string, string > dependency_priority_map;
+  map< string, string > dependency_vroom_priority_map;
   ifstream infile(dependency_file);
   string line;
   if (infile.is_open()) {
@@ -266,10 +267,12 @@ void populate_push_configurations( const string & dependency_file,
       }
       string child = splitted_line[2];
       string resource_type = splitted_line[4];
-      string resource_priority = splitted_line[5];
+      string resource_priority = splitted_line[5]; // This is Chrome's request priority: NOT USING THIS
+      string dependency_priority = splitted_line[6]; // This is the predefined priority
       dependencies_map[parent].push_back(child);
       dependency_type_map[child] = resource_type;
       dependency_priority_map[child] = resource_priority;
+      dependency_vroom_priority_map[child] = dependency_priority;
     }
     infile.close();
   }
@@ -286,16 +289,13 @@ void populate_push_configurations( const string & dependency_file,
       for (auto list_it = values.begin(); list_it != values.end(); ++list_it) {
         // Push all dependencies for the location.
         string dependency_filename = *list_it;
-        // if (dependency_type_map[dependency_filename] == "Document" ||
+        // if (((dependency_priority_map[dependency_filename] == "VeryHigh" ||
+        //     dependency_priority_map[dependency_filename] == "High" ||
+        //     dependency_priority_map[dependency_filename] == "Medium") &&
+        //     (dependency_type_map[dependency_filename] == "Document" ||
         //     dependency_type_map[dependency_filename] == "Script" ||
-        //     dependency_type_map[dependency_filename] == "Stylesheet") {
-        if ((dependency_priority_map[dependency_filename] == "VeryHigh" ||
-            dependency_priority_map[dependency_filename] == "High" ||
-            dependency_priority_map[dependency_filename] == "Medium") &&
-            (dependency_type_map[dependency_filename] == "Document" ||
-            dependency_type_map[dependency_filename] == "Script" ||
-            dependency_type_map[dependency_filename] == "Stylesheet")) {
-          string dependency_type = dependency_type_map[dependency_filename];
+        string dependency_priority = dependency_vroom_priority_map[dependency_filename];
+        if (dependency_priority == "Important") {
           string link_resource_string = "<" + dependency_filename + ">;rel=preload"
             + infer_resource_type(dependency_type_map[dependency_filename]);
 
@@ -306,16 +306,14 @@ void populate_push_configurations( const string & dependency_file,
           }
 
           link_resources.push_back(link_resource_string);
-        } else if (dependency_type_map[dependency_filename] != "XHR") {
+        } else if (dependency_priority == "Semi-important") {
           string resource_string = dependency_filename + ";" + 
-                                   dependency_type_map[dependency_filename];
-          if (dependency_type_map[dependency_filename] == "Document" ||
-              dependency_type_map[dependency_filename] == "Script" ||
-              dependency_type_map[dependency_filename] == "Stylesheet") {
+                                               dependency_type_map[dependency_filename];
             semi_important_resources.push_back(resource_string);
-          } else {
-            unimportant_resources.push_back(resource_string);
-          }
+        } else {
+          string resource_string = dependency_filename + ";" + 
+                                               dependency_type_map[dependency_filename];
+          unimportant_resources.push_back(resource_string);
         }
       }
     }
