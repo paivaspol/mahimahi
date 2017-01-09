@@ -39,6 +39,8 @@ ReverseProxy::ReverseProxy( const Address & frontend_address,
 
     /* limit the concurrent backend connection to 1 */
     config_file_.write("backend-connections-per-frontend=1\n");
+    config_file_.write("backend-keep-alive-timeout=25ms\n");
+
     // config_file_.write("backend-connections-per-host=1\n");
 
     if (backend_address.port() == 443) {
