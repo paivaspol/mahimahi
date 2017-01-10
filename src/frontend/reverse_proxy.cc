@@ -34,6 +34,8 @@ ReverseProxy::ReverseProxy( const Address & frontend_address,
     config_file_.write("frontend=" + frontend_address.ip() + "," + 
         to_string(frontend_address.port()) + "\n");
 
+    config_file_.write("backend-keep-alive-timeout=250ms\n");
+
     config_file_.write("private-key-file=" + path_to_proxy_key + "\n");
     config_file_.write("certificate-file=" + path_to_proxy_cert + "\n");
 
