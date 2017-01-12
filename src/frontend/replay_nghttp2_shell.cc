@@ -166,7 +166,7 @@ int main( int argc, char *argv[] )
               }
 
               /* set up dummy interfaces */
-              unsigned int interface_counter = 2;
+              unsigned int interface_counter = 4;
               vector< pair< string, Address > > hostname_to_reverse_proxy_addresses;
               vector< pair< Address, Address > > webserver_to_reverse_proxy_addresses;
               vector< pair< string, string > > hostname_to_reverse_proxy_names;
@@ -217,8 +217,8 @@ int main( int argc, char *argv[] )
                     // There isn't an entry for the webserver ip in the map.
  
                     // Setup interfaces for reverse proxies.
-                    string reverse_proxy_name = to_string( interface_counter ) + ".reverse.com";
-                    string reverse_proxy_device_name = "reverse" + to_string( interface_counter );
+                    string reverse_proxy_name = to_string( interface_counter + 1 ) + ".reverse.com";
+                    string reverse_proxy_device_name = "reverse" + to_string( interface_counter + 1 );
                     Address reverse_proxy_address = Address::reverse_proxy(interface_counter + 1, address.port());
                     add_dummy_interface( reverse_proxy_device_name, reverse_proxy_address);
 
