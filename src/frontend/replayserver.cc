@@ -304,13 +304,13 @@ void populate_push_configurations( const string & dependency_file,
         //      dependency_filename == "http://fifa.worldsportshops.com/85103.png")) {
         string dependency_priority = dependency_vroom_priority_map[dependency_filename];
         string dependency_type = dependency_type_map[dependency_filename];
-        if (dependency_type != "XHR") {
+        if (dependency_type != "XHR" ) {
           if (dependency_priority == "Important") {
             string link_resource_string = "<" + dependency_filename + ">;rel=preload"
               + infer_resource_type(dependency_type_map[dependency_filename]);
             // Add push or nopush directive based on the hostname of the URL.
             string request_hostname = strip_www( extract_hostname( dependency_filename ));
-            if ( request_hostname != current_loading_page ) {
+            if ( request_hostname != current_loading_page || dependency_type == "XHR" ) {
               link_resource_string += ";nopush";
             }
             link_resources.push_back(link_resource_string);
@@ -438,7 +438,8 @@ int main( void )
                                          "Last-modified",
                                          "Date",
                                          "Age",
-                                         "Etag" };
+                                         "Etag",
+                                         "kp-eealive" };
             for ( auto it = headers.begin(); it != headers.end(); ++it ) {
                 response.remove_header( *it );
             }
