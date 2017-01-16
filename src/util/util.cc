@@ -102,7 +102,10 @@ void make_directory( const string & directory )
     assert( not directory.empty() );
     assert( directory.back() == '/' );
 
-    SystemCall( "mkdir -p " + directory, mkdir( directory.c_str(), 00700 ) );
+    struct stat sb;
+    if ( stat( directory.c_str(), &sb ) == -1 ) {
+      SystemCall( "mkdir " + directory, mkdir( directory.c_str(), 00700 ) );
+    }
 }
 
 Address first_nameserver( void )
