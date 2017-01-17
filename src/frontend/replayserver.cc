@@ -261,6 +261,7 @@ void populate_push_configurations( const string & dependency_file,
   map< string, string > dependency_vroom_priority_map;
   ifstream infile(dependency_file);
   string line;
+  map< string, int > important_resource_counter;
   if (infile.is_open()) {
     while (getline(infile, line)) {
       vector< string > splitted_line = split(line, ' ');
@@ -276,6 +277,13 @@ void populate_push_configurations( const string & dependency_file,
       dependency_type_map[child] = resource_type;
       dependency_priority_map[child] = resource_priority;
       dependency_vroom_priority_map[child] = dependency_priority;
+      if (resource_priority == "Important" ) {
+        if ( important_resource_counter.find(parent) == important_resource_counter.end() ) {
+          important_resource_counter[parent] = 0;
+        } else {
+          important_resource_counter[parent]++;
+        }
+      }
     }
     infile.close();
   }
@@ -292,20 +300,19 @@ void populate_push_configurations( const string & dependency_file,
       for (auto list_it = values.begin(); list_it != values.end(); ++list_it) {
         // Push all dependencies for the location.
         string dependency_filename = *list_it;
-        // if (((dependency_priority_map[dependency_filename] == "VeryHigh" ||
-        //     dependency_priority_map[dependency_filename] == "High" ||
-        //     dependency_priority_map[dependency_filename] == "Medium") &&
-        //     (dependency_type_map[dependency_filename] == "Document" ||
-        //     dependency_type_map[dependency_filename] == "Script" ||
-        //     dependency_type_map[dependency_filename] == "Stylesheet")) ||
-        //     (dependency_filename == "http://fifa.worldsportshops.com/85122.png" ||
-        //      dependency_filename == "http://fifa.worldsportshops.com/85123.png" ||
-        //      dependency_filename == "http://fifa.worldsportshops.com/85104.png" ||
-        //      dependency_filename == "http://fifa.worldsportshops.com/85103.png")) {
         string dependency_priority = dependency_vroom_priority_map[dependency_filename];
         string dependency_type = dependency_type_map[dependency_filename];
         if (dependency_type != "XHR" ) {
           if (dependency_priority == "Important") {
+            string link_resource_string = "<" + dependency_filename + ">;rel=preload"
+              + infer_resource_type(dependency_type_map[dependency_filename]);
+            // Add push or nopush directive based on the hostname of the URL.
+            string request_hostname = strip_www( extract_hostname( dependency_filename ));
+            if ( request_hostname != current_loading_page || dependency_type == "XHR" ) {
+              link_resource_string += ";nopush";
+            }
+            link_resources.push_back(link_resource_string);
+          } else if ( important_resource_counter[key] == 0 && dependency_priority == "Semi-important" ) {
             string link_resource_string = "<" + dependency_filename + ">;rel=preload"
               + infer_resource_type(dependency_type_map[dependency_filename]);
             // Add push or nopush directive based on the hostname of the URL.
