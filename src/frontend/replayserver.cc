@@ -284,6 +284,7 @@ void populate_push_configurations( const string & dependency_file,
     // Write the dependencies to the configuration file.
     string removed_slash_request_url = remove_trailing_slash(request_url);
     vector< string > link_resources;
+    vector< string > important_iframes;
     vector< string > semi_important_resources;
     vector< string > unimportant_resources;
     if (dependencies_map.find(removed_slash_request_url) != dependencies_map.end()) {
@@ -305,7 +306,11 @@ void populate_push_configurations( const string & dependency_file,
         string dependency_priority = dependency_vroom_priority_map[dependency_filename];
         string dependency_type = dependency_type_map[dependency_filename];
         if (dependency_type != "XHR" ) {
-          if (dependency_priority == "Important") {
+          if (dependency_priority == "Important" && dependency_type == "Document") {
+            string resource_string = dependency_filename + ";" + 
+                                                 dependency_type_map[dependency_filename];
+            important_iframes.push_back(resource_string);
+          } else if (dependency_priority == "Important") {
             string link_resource_string = "<" + dependency_filename + ">;rel=preload"
               + infer_resource_type(dependency_type_map[dependency_filename]);
             // Add push or nopush directive based on the hostname of the URL.
@@ -317,7 +322,7 @@ void populate_push_configurations( const string & dependency_file,
           } else if (dependency_priority == "Semi-important") {
             string resource_string = dependency_filename + ";" + 
                                                  dependency_type_map[dependency_filename];
-              semi_important_resources.push_back(resource_string);
+            semi_important_resources.push_back(resource_string);
           } else {
             string resource_string = dependency_filename + ";" + 
                                                  dependency_type_map[dependency_filename];
@@ -336,6 +341,14 @@ void populate_push_configurations( const string & dependency_file,
       }
       string link_string = "Link: " + link_string_value.substr(0, link_string_value.size() - 2);
       response.add_header_after_parsing(link_string);
+    }
+    if (important_iframes.size() > 0) {
+      string important_iframes_value = "";
+      for (auto it = important_iframes.begin(); it != important_iframes.end(); ++it) {
+        important_iframes_value += *it + delimeter;
+      }
+      string x_systemname_important_iframes_resource_string = "x-systemname-important-iframes: " + important_iframes_value.substr(0, important_iframes_value.size() - delimeter.length());
+      response.add_header_after_parsing(x_systemname_important_iframes_resource_string);
     }
     if (semi_important_resources.size() > 0) {
       string semi_important_resource_value = "";
@@ -439,7 +452,8 @@ int main( void )
                                          "Date",
                                          "Age",
                                          "Etag",
-                                         "kp-eealive" };
+                                         "kp-eealive",
+					 "Pragma" };
             for ( auto it = headers.begin(); it != headers.end(); ++it ) {
                 response.remove_header( *it );
             }
