@@ -293,7 +293,7 @@ void populate_push_configurations( const string & dependency_file,
           + infer_resource_type(dependency_type_map[dependency_filename]);
 
         string request_hostname = strip_www( extract_hostname( dependency_filename ));
-        if ( request_hostname == current_loading_page ) {
+        if ( request_hostname == current_loading_page && dependency_priority == "Important" ) {
           // Only push all given resources
           link_resources.push_back(link_resource_string);
         }
