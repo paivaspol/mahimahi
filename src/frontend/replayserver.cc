@@ -287,33 +287,15 @@ void populate_push_configurations( const string & dependency_file,
       auto key = removed_slash_request_url;
       auto values = dependencies_map[key];
       for (auto list_it = values.begin(); list_it != values.end(); ++list_it) {
-        // Push all dependencies for the location.
         string dependency_filename = *list_it;
-        // if (((dependency_priority_map[dependency_filename] == "VeryHigh" ||
-        //     dependency_priority_map[dependency_filename] == "High" ||
-        //     dependency_priority_map[dependency_filename] == "Medium") &&
-        //     (dependency_type_map[dependency_filename] == "Document" ||
-        //     dependency_type_map[dependency_filename] == "Script" ||
         string dependency_priority = dependency_vroom_priority_map[dependency_filename];
-        if (dependency_priority == "Important") {
-          string link_resource_string = "<" + dependency_filename + ">;rel=preload"
-            + infer_resource_type(dependency_type_map[dependency_filename]);
+        string link_resource_string = "<" + dependency_filename + ">;rel=preload"
+          + infer_resource_type(dependency_type_map[dependency_filename]);
 
-          // Add push or nopush directive based on the hostname of the URL.
-          string request_hostname = strip_www( extract_hostname( dependency_filename ));
-          if ( request_hostname != current_loading_page ) {
-            link_resource_string += ";nopush";
-          }
-
+        string request_hostname = strip_www( extract_hostname( dependency_filename ));
+        if ( request_hostname == current_loading_page ) {
+          // Only push all given resources
           link_resources.push_back(link_resource_string);
-        } else if (dependency_priority == "Semi-important") {
-          string resource_string = dependency_filename + ";" + 
-                                               dependency_type_map[dependency_filename];
-            semi_important_resources.push_back(resource_string);
-        } else {
-          string resource_string = dependency_filename + ";" + 
-                                               dependency_type_map[dependency_filename];
-          unimportant_resources.push_back(resource_string);
         }
       }
     }
@@ -327,22 +309,6 @@ void populate_push_configurations( const string & dependency_file,
       }
       string link_string = "Link: " + link_string_value.substr(0, link_string_value.size() - 2);
       response.add_header_after_parsing(link_string);
-    }
-    if (semi_important_resources.size() > 0) {
-      string semi_important_resource_value = "";
-      for (auto it = semi_important_resources.begin(); it != semi_important_resources.end(); ++it) {
-        semi_important_resource_value += *it + delimeter;
-      }
-      string x_systemname_semi_important_resource_string = "x-systemname-semi-important: " + semi_important_resource_value.substr(0, semi_important_resource_value.size() - delimeter.length());
-      response.add_header_after_parsing(x_systemname_semi_important_resource_string);
-    }
-    if (unimportant_resources.size() > 0) {
-      string unimportant_resource_value = "";
-      for (auto it = unimportant_resources.begin(); it != unimportant_resources.end(); ++it) {
-        unimportant_resource_value += *it + delimeter;
-      }
-      string x_systemname_unimportant_resource_string = "x-systemname-unimportant: " + unimportant_resource_value.substr(0, unimportant_resource_value.size() - delimeter.length());
-      response.add_header_after_parsing(x_systemname_unimportant_resource_string);
     }
   }
 }
