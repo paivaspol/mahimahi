@@ -319,18 +319,7 @@ void populate_push_configurations( const string & dependency_file,
             string resource_string = dependency_filename + ";" + 
                                                  dependency_type_map[dependency_filename];
             unimportant_resources.push_back(resource_string);
->>>>>>> 08c6930... Added new header type
           }
-
-          link_resources.push_back(link_resource_string);
-        } else if (dependency_priority == "Semi-important") {
-          string resource_string = dependency_filename + ";" + 
-                                               dependency_type_map[dependency_filename];
-            semi_important_resources.push_back(resource_string);
-        } else {
-          string resource_string = dependency_filename + ";" + 
-                                               dependency_type_map[dependency_filename];
-          unimportant_resources.push_back(resource_string);
         }
       }
     }
