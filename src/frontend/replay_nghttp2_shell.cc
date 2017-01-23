@@ -45,6 +45,14 @@ void add_dummy_interface( const string & name, const Address & addr )
                      [&] ( ifreq &ifr ) { ifr.ifr_addr = addr.to_sockaddr(); } );
 }
 
+void get_domains( const string & filename, set<string> domains ) {
+  std::string line;
+  while (std::getline(infile, line))
+  {
+    domains.insert(line);
+  }
+}
+
 int main( int argc, char *argv[] )
 {
     try {
@@ -102,6 +110,8 @@ int main( int argc, char *argv[] )
 
         // int nghttpx_port = atoi(argv[3]);
         EventLoop outer_event_loop;
+
+        string escaped_page = argv[9];
         
         /* Fork */
         {
@@ -137,7 +147,7 @@ int main( int argc, char *argv[] )
               vector< pair< string, Address > > hostname_to_ip;
               set< pair< string, Address > > hostname_to_ip_set;
               map<string, Address> hostname_to_address_map;
-
+              map< Address, string > actual_address_to_hostname;
               {
                   TemporarilyUnprivileged tu;
                   /* would be privilege escalation if we let the user read directories or open files as root */
@@ -162,8 +172,14 @@ int main( int argc, char *argv[] )
                       cout << "Request first line: " << HTTPRequest( protobuf.request() ).first_line() << " IP:port: " << address.str() << endl;
                       hostname_to_ip_set.insert( make_pair(hostname, address) );
                       hostname_to_address_map.insert( make_pair(hostname, address) );
+                      actual_address_to_hostname.insert( make_pair(address, hostname) );
                   }
               }
+
+              /* Get domains to use that adopts h2 */
+              set<string> domains_adopt_h2;
+              string domains_to_use_filename = "domains_to_use" + escaped_page;
+              get_domains(domains_to_use_filename, domains_adopt_h2);
 
               /* set up dummy interfaces */
               unsigned int interface_counter = 4;
@@ -212,47 +228,53 @@ int main( int argc, char *argv[] )
                   }
                   added_ip_addresses.insert( address.ip() );
 
-                  // Check whether this IP corresponds to a reverse proxy IP or not.
-                  if ( webserver_ip_to_reverse_proxy_ip.find( address ) == webserver_ip_to_reverse_proxy_ip.end() ) {
-                    // There isn't an entry for the webserver ip in the map.
- 
-                    // Setup interfaces for reverse proxies.
-                    string reverse_proxy_name = to_string( interface_counter + 1 ) + ".reverse.com";
-                    string reverse_proxy_device_name = "reverse" + to_string( interface_counter + 1 );
-                    Address reverse_proxy_address = Address::reverse_proxy(interface_counter + 1, address.port());
-                    add_dummy_interface( reverse_proxy_device_name, reverse_proxy_address);
+                  if (domains_adopt_h2.find(hostname) != domains_adopt_h2.end()) {
 
-                    webserver_ip_to_reverse_proxy_ip[address] = reverse_proxy_address;
-                    webserver_ip_to_reverse_proxy_name[address] = reverse_proxy_name;
-                    interface_counter++;
+                    // Check whether this IP corresponds to a reverse proxy IP or not.
+                    if ( webserver_ip_to_reverse_proxy_ip.find( address ) == webserver_ip_to_reverse_proxy_ip.end() ) {
+                      // There isn't an entry for the webserver ip in the map.
+   
+                      // Setup interfaces for reverse proxies.
+                      string reverse_proxy_name = to_string( interface_counter + 1 ) + ".reverse.com";
+                      string reverse_proxy_device_name = "reverse" + to_string( interface_counter + 1 );
+                      Address reverse_proxy_address = Address::reverse_proxy(interface_counter + 1, address.port());
+                      add_dummy_interface( reverse_proxy_device_name, reverse_proxy_address);
+
+                      webserver_ip_to_reverse_proxy_ip[address] = reverse_proxy_address;
+                      webserver_ip_to_reverse_proxy_name[address] = reverse_proxy_name;
+                      interface_counter++;
+                    }
+
+                    // Populuate name resolution pairs.
+                    auto reverse_proxy_address = webserver_ip_to_reverse_proxy_ip[address];
+                    auto reverse_proxy_name = webserver_ip_to_reverse_proxy_name[address];
+                    if (reverse_proxy_address.port() == 80) {
+                      // CASE: HTTP; don't resolve the actual domain, but resolve reverse proxy to the 
+                      // reverse proxy address instead. The client can now resolve the proxy.
+                      name_resolution_pairs.push_back(make_pair(reverse_proxy_name, reverse_proxy_address));
+
+                      // Add an entry for HTTPS just in case and point it to the default webserver.
+                      name_resolution_pairs.push_back(make_pair(hostname, http_default_reverse_proxy_address));
+                    } else if (reverse_proxy_address.port() == 443) {
+                      // CASE: HTTPS; The client will have to directly connect to the reverse proxy.
+                      // The hostname of the domain should resolve directly to the reverse proxy address.
+                      name_resolution_pairs.push_back(make_pair(hostname, reverse_proxy_address));
+                    }
+
+                    // Populate other information.
+                    cout << "Hostname: " << hostname << " reverse proxy addr: " << reverse_proxy_address.str() << " host IP: " << address.str() << endl;
+                    hostname_to_reverse_proxy_addresses.push_back(make_pair(hostname, reverse_proxy_address));
+                    hostname_to_reverse_proxy_names.push_back(make_pair(hostname, reverse_proxy_name));
+                    webserver_to_reverse_proxy_addresses.push_back(make_pair(address, reverse_proxy_address));
+                  } else {
+                    // we don't adopt HTTP/2
+                    name_resolution_pairs.push_back(make_pair(hostname, address));
+                    cout << "[HTTP/1.1] Hostname: " << hostname << " reverse proxy addr: " << " host IP: " << address.str() << endl;
+                    hostname_to_reverse_proxy_addresses.push_back(make_pair(hostname, address));
                   }
-
-                  // Populuate name resolution pairs.
-                  auto reverse_proxy_address = webserver_ip_to_reverse_proxy_ip[address];
-                  auto reverse_proxy_name = webserver_ip_to_reverse_proxy_name[address];
-                  if (reverse_proxy_address.port() == 80) {
-                    // CASE: HTTP; don't resolve the actual domain, but resolve reverse proxy to the 
-                    // reverse proxy address instead. The client can now resolve the proxy.
-                    name_resolution_pairs.push_back(make_pair(reverse_proxy_name, reverse_proxy_address));
-
-                    // Add an entry for HTTPS just in case and point it to the default webserver.
-                    name_resolution_pairs.push_back(make_pair(hostname, http_default_reverse_proxy_address));
-                  } else if (reverse_proxy_address.port() == 443) {
-                    // CASE: HTTPS; The client will have to directly connect to the reverse proxy.
-                    // The hostname of the domain should resolve directly to the reverse proxy address.
-                    name_resolution_pairs.push_back(make_pair(hostname, reverse_proxy_address));
-                  }
-
-                  // Populate other information.
-                  cout << "Hostname: " << hostname << " reverse proxy addr: " << reverse_proxy_address.str() << " host IP: " << address.str() << endl;
-                  hostname_to_reverse_proxy_addresses.push_back(make_pair(hostname, reverse_proxy_address));
-                  hostname_to_reverse_proxy_names.push_back(make_pair(hostname, reverse_proxy_name));
-                  webserver_to_reverse_proxy_addresses.push_back(make_pair(address, reverse_proxy_address));
               }
 
               string path_to_dependency_file = argv[8];
-
-              string escaped_page = argv[9];
 
               /* set up web servers */
               vector< WebServer > servers;
@@ -284,11 +306,6 @@ int main( int argc, char *argv[] )
 
               // vector< pair< Address, Address >> actual_ip_address_to_reverse_proxy_mapping;
               for (auto webserver_to_reverse_proxy_ip_pair : webserver_to_reverse_proxy_addresses ) {
-              // for ( uint16_t i = 0; i < hostname_to_reverse_proxy_addresses.size(); i++) {
-                // auto hostname_to_reverse_proxy = hostname_to_reverse_proxy_addresses[i];
-                // auto reverse_proxy_address = hostname_to_reverse_proxy.second;
-                // auto webserver_address = webserver_to_reverse_proxy_addresses[i].first;
-                // actual_ip_address_to_reverse_proxy_mapping.emplace_back(webserver_address, reverse_proxy_address);
                 auto webserver_address = webserver_to_reverse_proxy_ip_pair.first;
                 auto reverse_proxy_address = webserver_to_reverse_proxy_ip_pair.second;
                 reverse_proxies.emplace_back(reverse_proxy_address,
