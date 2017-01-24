@@ -22,7 +22,8 @@ void write_config_file(TempFile & config_file,
                        const Address & addr, 
                        const string & working_directory, 
                        const string & record_path,
-                       const string & page) {
+                       const string & page,
+                       bool single_threaded) {
     config_file.write( apache_main_config );
 
     string path_prefix = PATH_PREFIX;
@@ -35,7 +36,9 @@ void write_config_file(TempFile & config_file,
     config_file.write( "LoadingPage " + page + "\n");
 
     /* limit number of child process to 1 */
-    config_file.write( "MaxRequestWorkers 1\n" );
+    if ( single_threaded ) {
+      config_file.write( "MaxRequestWorkers 1\n" );
+    }
 
     /* add pid file, log files, user/group name, and listen line to config file and run apache */
     config_file.write( "PidFile /tmp/replayshell_apache_pid." + to_string( getpid() ) + "." + to_string( random() ) + "\n" );
@@ -60,7 +63,35 @@ WebServer::WebServer( const Address & addr, const string & working_directory, co
     : config_file_( "/tmp/replayshell_apache_config" ),
       moved_away_( false )
 {
-    write_config_file(config_file_, addr, working_directory, record_path, "custom.log");
+    write_config_file(config_file_, addr, working_directory, record_path, "custom.log", false);
+
+    /* if port 443, add ssl components */
+    if ( addr.port() == 443 ) { /* ssl */
+        config_file_.write( apache_ssl_config );
+    }
+
+    run( { APACHE2, "-f", config_file_.name(), "-k", "start" } );
+}
+
+WebServer::WebServer( const Address & addr, const string & working_directory, const string & record_path, bool single_threaded )
+    : config_file_( "/tmp/replayshell_apache_config" ),
+      moved_away_( false )
+{
+    write_config_file(config_file_, addr, working_directory, record_path, "custom.log", single_threaded);
+
+    /* if port 443, add ssl components */
+    if ( addr.port() == 443 ) { /* ssl */
+        config_file_.write( apache_ssl_config );
+    }
+
+    run( { APACHE2, "-f", config_file_.name(), "-k", "start" } );
+}
+
+WebServer::WebServer( const Address & addr, const string & working_directory, const string & record_path, const string & page, bool single_threaded )
+    : config_file_( "/tmp/replayshell_apache_config" ),
+      moved_away_( false )
+{
+    write_config_file(config_file_, addr, working_directory, record_path, page, single_threaded);
 
     /* if port 443, add ssl components */
     if ( addr.port() == 443 ) { /* ssl */
@@ -74,7 +105,7 @@ WebServer::WebServer( const Address & addr, const string & working_directory, co
     : config_file_( "/tmp/replayshell_apache_config" ),
       moved_away_( false )
 {
-    write_config_file(config_file_, addr, working_directory, record_path, page);
+    write_config_file(config_file_, addr, working_directory, record_path, page, false);
 
     /* if port 443, add ssl components */
     if ( addr.port() == 443 ) { /* ssl */
@@ -98,40 +129,6 @@ vector<string> split(const string &s, char delim) {
   return elems;
 }
 
-void populate_push_configurations( TempFile & config_file, const string & dependency_file ) {
-  map< string, vector< string >> dependencies_map;
-  ifstream infile(dependency_file);
-  string line;
-  if (infile.is_open()) {
-    while (getline(infile, line)) {
-      vector< string > splitted_line = split(line, ' ');
-      if (dependencies_map.find(splitted_line[0]) == dependencies_map.end()) {
-        dependencies_map[splitted_line[0]] = { };
-      }
-      dependencies_map[splitted_line[0]].push_back(splitted_line[2]);
-    }
-    infile.close();
-  }
-  config_file.write("Header add MyHeader test\n");
-
-  if ( !dependencies_map.empty() ) {
-    // Write the dependencies to the configuration file.
-    for (auto it = dependencies_map.begin(); it != dependencies_map.end(); ++it) {
-      auto key = it->first;
-      auto values = it->second;
-      // config_file.write("<Location " + key  + ">\n"); // Set location condition.
-      // config_file.write("<IfModule mod_headers.c>\n");
-      for (auto list_it = values.begin(); list_it != values.end(); ++list_it) {
-        // Push all dependencies for the location.
-        // string link_string = "Link: \"<" + *list_it + ">;rel=preload\"";
-        // config_file.write("Header add " + link_string + "\n");
-      }
-      // config_file.write("</IfModule>\n");
-      // config_file.write("</Location>\n"); 
-    }
-  }
-}
-
 WebServer::WebServer( const Address & addr, const string & working_directory,
            const string & record_path, const string & escaped_page, const string & dependency_file )
     : config_file_( "/tmp/replayshell_apache_config" ),
@@ -140,12 +137,32 @@ WebServer::WebServer( const Address & addr, const string & working_directory,
     // string path_prefix = PATH_PREFIX;
     // config_file_.write( "LoadModule headers_module " + path_prefix + "/modules/mod_headers.so\n" );
 
-    // populate_push_configurations(config_file_, dependency_file);
+    string line = "DependencyFile " + dependency_file + "\n";
+    config_file_.write(line);
+
+    write_config_file(config_file_, addr, working_directory, record_path, escaped_page, false);
+
+    /* if port 443, add ssl components */
+    if ( addr.port() == 443 ) { /* ssl */
+        config_file_.write( apache_ssl_config );
+    }
+
+    run( { APACHE2, "-f", config_file_.name(), "-k", "start" } );
+}
+
+WebServer::WebServer( const Address & addr, const string & working_directory,
+           const string & record_path, const string & escaped_page, const string & dependency_file, bool single_threaded )
+    : config_file_( "/tmp/replayshell_apache_config" ),
+      moved_away_( false )
+{
+    // string path_prefix = PATH_PREFIX;
+    // config_file_.write( "LoadModule headers_module " + path_prefix + "/modules/mod_headers.so\n" );
+    cout << "[WebServer] address: " << addr.str() << " config: " << config_file_.name() << endl;
 
     string line = "DependencyFile " + dependency_file + "\n";
     config_file_.write(line);
 
-    write_config_file(config_file_, addr, working_directory, record_path, escaped_page);
+    write_config_file(config_file_, addr, working_directory, record_path, escaped_page, single_threaded);
 
     /* if port 443, add ssl components */
     if ( addr.port() == 443 ) { /* ssl */

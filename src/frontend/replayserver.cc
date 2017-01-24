@@ -472,8 +472,10 @@ int main( void )
             }
 
             if (!response.has_header("Access-Control-Allow-Origin")) {
+              // response.add_header_after_parsing( "Access-Control-Allow-Origin: https://www.netflix.com" );
               response.add_header_after_parsing( "Access-Control-Allow-Origin: *" );
             }
+            response.add_header_after_parsing( "Access-Control-Allow-Credentials: true" );
 
             cout << response.str();
             return EXIT_SUCCESS;

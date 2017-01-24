@@ -21,7 +21,8 @@ ReverseProxy::ReverseProxy( const Address & frontend_address,
                             const string & path_to_proxy,
                             const string & path_to_proxy_key,
                             const string & path_to_proxy_cert,
-                            const string & page)
+                            const string & page,
+                            bool single_threaded )
   : config_file_("/tmp/nghttpx_config.conf"),
     pidfile_("/tmp/replayshell_nghttpx.pid"),
     moved_away_(false)
@@ -38,7 +39,9 @@ ReverseProxy::ReverseProxy( const Address & frontend_address,
     config_file_.write("pid-file=" + pidfile_.name() + "\n");
 
     /* limit the concurrent backend connection to 1 */
-    config_file_.write("backend-connections-per-frontend=1\n");
+    if ( single_threaded ) {
+      config_file_.write("backend-connections-per-frontend=1\n");
+    }
     config_file_.write("backend-keep-alive-timeout=250ms\n");
 
     // config_file_.write("backend-connections-per-host=1\n");
