@@ -297,30 +297,14 @@ void populate_push_configurations( const string & dependency_file,
         //     dependency_type_map[dependency_filename] == "Script" ||
         string dependency_priority = dependency_vroom_priority_map[dependency_filename];
         string dependency_type = dependency_type_map[dependency_filename];
-        if (dependency_type != "XHR" ) {
-          if (dependency_priority == "Important" && dependency_type == "Document") {
-            string resource_string = dependency_filename + ";" + 
-                                                 dependency_type_map[dependency_filename];
-            important_iframes.push_back(resource_string);
-          } else if (dependency_priority == "Important") {
-            string link_resource_string = "<" + dependency_filename + ">;rel=preload"
-              + infer_resource_type(dependency_type_map[dependency_filename]);
-            // Add push or nopush directive based on the hostname of the URL.
-            string request_hostname = strip_www( extract_hostname( dependency_filename ));
-            if ( request_hostname != current_loading_page || dependency_type == "XHR" ) {
-              link_resource_string += ";nopush";
-            }
-            link_resources.push_back(link_resource_string);
-          } else if (dependency_priority == "Semi-important") {
-            string resource_string = dependency_filename + ";" + 
-                                                 dependency_type_map[dependency_filename];
-            semi_important_resources.push_back(resource_string);
-          } else {
-            string resource_string = dependency_filename + ";" + 
-                                                 dependency_type_map[dependency_filename];
-            unimportant_resources.push_back(resource_string);
-          }
+        string link_resource_string = "<" + dependency_filename + ">;rel=preload"
+          + infer_resource_type(dependency_type_map[dependency_filename]);
+        // Add push or nopush directive based on the hostname of the URL.
+        string request_hostname = strip_www( extract_hostname( dependency_filename ));
+        if ( request_hostname != current_loading_page) {
+          link_resource_string += ";nopush";
         }
+        link_resources.push_back(link_resource_string);
       }
     }
 
