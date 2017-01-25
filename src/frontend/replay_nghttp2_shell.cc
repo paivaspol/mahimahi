@@ -182,7 +182,7 @@ int main( int argc, char *argv[] )
 
               /* Get domains to use that adopts h2 */
               set<string> domains_adopt_h2;
-              string domains_to_use_filename = "domains_to_use/" + escaped_page;
+              string domains_to_use_filename = "/home/vaspol/Research/MobileWebOptimization/page_load_setup/build/bin/domains_to_use/" + escaped_page;
               get_domains(domains_to_use_filename, domains_adopt_h2);
               cout << "domains: ";
               for (auto domain_iter = domains_adopt_h2.begin(); domain_iter != domains_adopt_h2.end(); domain_iter++ ) {
@@ -282,7 +282,11 @@ int main( int argc, char *argv[] )
                 if (path_to_dependency_file == "None") {
                   servers.emplace_back( ip_port, working_directory, directory, escaped_page, single_threaded );
                 } else {
-                  servers.emplace_back( ip_port, working_directory, directory, escaped_page, path_to_dependency_file, single_threaded );
+                  if ( single_threaded ) {
+                    servers.emplace_back( ip_port, working_directory, directory, escaped_page, path_to_dependency_file, single_threaded );
+                  } else {
+                    servers.emplace_back( ip_port, working_directory, directory, escaped_page, single_threaded );
+                  }
                 }
               }
 
@@ -304,7 +308,7 @@ int main( int argc, char *argv[] )
                                           single_threaded );
               }
 
-              PacFile pac_file("/home/ubuntu/Sites/config_testing.pac");
+              PacFile pac_file("/home/vaspol/Sites/config_testing.pac");
               cout << hostname_to_reverse_proxy_addresses.size() << endl;
               // pac_file.WriteProxies(hostname_to_reverse_proxy_addresses,
               //                       hostname_to_reverse_proxy_names);
