@@ -323,14 +323,6 @@ void populate_push_configurations( const string & dependency_file,
       string link_string = "Link: " + link_string_value.substr(0, link_string_value.size() - 2);
       response.add_header_after_parsing(link_string);
     }
-    if (semi_important_resources.size() > 0) {
-      string semi_important_resource_value = "";
-      for (auto it = semi_important_resources.begin(); it != semi_important_resources.end(); ++it) {
-        semi_important_resource_value += *it + delimeter;
-      }
-      string x_systemname_semi_important_resource_string = "x-systemname-semi-important: " + semi_important_resource_value.substr(0, semi_important_resource_value.size() - delimeter.length());
-      response.add_header_after_parsing(x_systemname_semi_important_resource_string);
-    }
     if (unimportant_resources.size() > 0) {
       string unimportant_resource_value = "";
       for (auto it = unimportant_resources.begin(); it != unimportant_resources.end(); ++it) {
