@@ -296,7 +296,7 @@ int main( int argc, char *argv[] )
                                           escaped_page );
               }
 
-              PacFile pac_file("/home/vaspol/Sites/config_testing.pac");
+              PacFile pac_file("/home/ubuntu/Sites/config_testing.pac");
               cout << hostname_to_reverse_proxy_addresses.size() << endl;
               // pac_file.WriteProxies(hostname_to_reverse_proxy_addresses,
               //                       hostname_to_reverse_proxy_names);

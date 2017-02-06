@@ -42,7 +42,12 @@ void write_config_file(TempFile & config_file,
 
     config_file.write( "ServerName mahimahi.\n" );
 
+    config_file.write("LogLevel debug\n");
+   
     config_file.write( "ErrorLog " + path_prefix + "/logs/apache_errors.log\n" );
+    config_file.write( "CoreDumpDirectory " + path_prefix + "/logs\n");
+
+//    cout << "CoreDumpDirectory: " + path_prefix << endl;
 
     string log_format = "%{usec}t %r %D %{Referer}i %{Host}i port:%p %{x-requested-with}i";
     config_file.write( "CustomLog \"" + path_prefix + "/logs/" + page + "\" \"" + log_format + "\"\n" );
