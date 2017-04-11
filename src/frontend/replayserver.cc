@@ -285,38 +285,25 @@ void populate_push_configurations( const string & dependency_file,
     // Write the dependencies to the configuration file.
     string removed_slash_request_url = remove_trailing_slash(request_url);
     vector< string > link_resources;
-    vector< string > important_iframes;
     vector< string > semi_important_resources;
     vector< string > unimportant_resources;
     if (dependencies_map.find(removed_slash_request_url) != dependencies_map.end()) {
       auto key = removed_slash_request_url;
+      string parent_frame_hostname = strip_www(extract_hostname(key));
       auto values = dependencies_map[key];
       for (auto list_it = values.begin(); list_it != values.end(); ++list_it) {
         // Push all dependencies for the location.
         string dependency_filename = *list_it;
-        // if (((dependency_priority_map[dependency_filename] == "VeryHigh" ||
-        //     dependency_priority_map[dependency_filename] == "High" ||
-        //     dependency_priority_map[dependency_filename] == "Medium") &&
-        //     (dependency_type_map[dependency_filename] == "Document" ||
-        //     dependency_type_map[dependency_filename] == "Script" ||
-        //     dependency_type_map[dependency_filename] == "Stylesheet")) ||
-        //     (dependency_filename == "http://fifa.worldsportshops.com/85122.png" ||
-        //      dependency_filename == "http://fifa.worldsportshops.com/85123.png" ||
-        //      dependency_filename == "http://fifa.worldsportshops.com/85104.png" ||
-        //      dependency_filename == "http://fifa.worldsportshops.com/85103.png")) {
         string dependency_priority = dependency_vroom_priority_map[dependency_filename];
         string dependency_type = dependency_type_map[dependency_filename];
+        current_loading_page.length();
         if (dependency_type != "XHR" ) {
-          if (dependency_priority == "Important" && dependency_type == "Document") {
-            string resource_string = dependency_filename + ";" + 
-                                                 dependency_type_map[dependency_filename];
-            important_iframes.push_back(resource_string);
-          } else if (dependency_priority == "Important") {
+          if (dependency_priority == "Important" && dependency_type != "Document") {
             string link_resource_string = "<" + dependency_filename + ">;rel=preload"
               + infer_resource_type(dependency_type_map[dependency_filename]);
             // Add push or nopush directive based on the hostname of the URL.
             string request_hostname = strip_www( extract_hostname( dependency_filename ));
-            if ( request_hostname != current_loading_page || dependency_type == "XHR" ) {
+            if ( parent_frame_hostname != request_hostname || dependency_type == "XHR" ) {
               link_resource_string += ";nopush";
             }
             link_resources.push_back(link_resource_string);
@@ -342,14 +329,6 @@ void populate_push_configurations( const string & dependency_file,
       }
       string link_string = "Link: " + link_string_value.substr(0, link_string_value.size() - 2);
       response.add_header_after_parsing(link_string);
-    }
-    if (important_iframes.size() > 0) {
-      string important_iframes_value = "";
-      for (auto it = important_iframes.begin(); it != important_iframes.end(); ++it) {
-        important_iframes_value += *it + delimeter;
-      }
-      string x_systemname_important_iframes_resource_string = "x-systemname-important-iframes: " + important_iframes_value.substr(0, important_iframes_value.size() - delimeter.length());
-      response.add_header_after_parsing(x_systemname_important_iframes_resource_string);
     }
     if (semi_important_resources.size() > 0) {
       string semi_important_resource_value = "";
