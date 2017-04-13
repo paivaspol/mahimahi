@@ -283,9 +283,9 @@ int main( int argc, char *argv[] )
                   servers.emplace_back( ip_port, working_directory, directory, escaped_page, single_threaded );
                 } else {
                   if ( single_threaded ) {
-                    servers.emplace_back( ip_port, working_directory, directory, escaped_page, path_to_dependency_file, single_threaded );
+                    servers.emplace_back( ip_port, working_directory, directory, escaped_page, path_to_dependency_file, single_threaded);
                   } else {
-                    servers.emplace_back( ip_port, working_directory, directory, escaped_page, single_threaded );
+                    servers.emplace_back( ip_port, working_directory, directory, escaped_page, single_threaded);
                   }
                 }
               }
@@ -293,7 +293,6 @@ int main( int argc, char *argv[] )
               /* set up nghttpx proxies */
               vector< ReverseProxy > reverse_proxies;
 
-              // vector< pair< Address, Address >> actual_ip_address_to_reverse_proxy_mapping;
               for (auto webserver_to_reverse_proxy_ip_pair : webserver_to_reverse_proxy_addresses ) {
                 auto webserver_address = webserver_to_reverse_proxy_ip_pair.first;
                 auto reverse_proxy_address = webserver_to_reverse_proxy_ip_pair.second;

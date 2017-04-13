@@ -254,7 +254,8 @@ string infer_resource_type(const string & resource_type) {
 void populate_push_configurations( const string & dependency_file, 
                                    const string & request_url, 
                                    HTTPResponse & response, 
-                                   const string & current_loading_page ) {
+                                   const string & current_loading_page,
+                                   const string & using_vroom ) {
   map< string, vector< string >> dependencies_map;
   map< string, string > dependency_type_map;
   map< string, string > dependency_priority_map;
@@ -293,19 +294,11 @@ void populate_push_configurations( const string & dependency_file,
       for (auto list_it = values.begin(); list_it != values.end(); ++list_it) {
         // Push all dependencies for the location.
         string dependency_filename = *list_it;
-        // if (((dependency_priority_map[dependency_filename] == "VeryHigh" ||
-        //     dependency_priority_map[dependency_filename] == "High" ||
-        //     dependency_priority_map[dependency_filename] == "Medium") &&
-        //     (dependency_type_map[dependency_filename] == "Document" ||
-        //     dependency_type_map[dependency_filename] == "Script" ||
-        //     dependency_type_map[dependency_filename] == "Stylesheet")) ||
-        //     (dependency_filename == "http://fifa.worldsportshops.com/85122.png" ||
-        //      dependency_filename == "http://fifa.worldsportshops.com/85123.png" ||
-        //      dependency_filename == "http://fifa.worldsportshops.com/85104.png" ||
-        //      dependency_filename == "http://fifa.worldsportshops.com/85103.png")) {
         string dependency_priority = dependency_vroom_priority_map[dependency_filename];
         string dependency_type = dependency_type_map[dependency_filename];
-        if (dependency_type != "XHR" ) {
+        using_vroom.length();
+        if (dependency_type != "XHR") {
+        // if (dependency_type != "XHR" && using_vroom == "True") {
           if (dependency_priority == "Important" && dependency_type == "Document") {
             string resource_string = dependency_filename + ";" + 
                                                  dependency_type_map[dependency_filename];
@@ -315,7 +308,9 @@ void populate_push_configurations( const string & dependency_file,
               + infer_resource_type(dependency_type_map[dependency_filename]);
             // Add push or nopush directive based on the hostname of the URL.
             string request_hostname = strip_www( extract_hostname( dependency_filename ));
-            if ( request_hostname != current_loading_page || dependency_type == "XHR" ) {
+            string stripped_key = strip_www(extract_hostname(key));
+            current_loading_page.length();
+            if ( request_hostname != stripped_key || dependency_type == "XHR" ) {
               link_resource_string += ";nopush";
             }
             link_resources.push_back(link_resource_string);
@@ -417,6 +412,7 @@ int main( void )
             + " " + path
             + " " + safe_getenv( "SERVER_PROTOCOL" );
         const bool is_https = getenv( "HTTPS" );
+        const string using_vroom = safe_getenv( "USING_VROOM" );
 
         SystemCall( "chdir", chdir( working_directory.c_str() ) );
 
@@ -460,15 +456,14 @@ int main( void )
 
             /* Add the cache-control header and set to 3600. */
             response.add_header_after_parsing( "Cache-Control: max-age=60" );
-            // response.add_header_after_parsing( "Cache-Control: no-cache, no-store, must-revalidate max-age=0" );
-
             if (dependency_filename != "None") {
               string scheme = is_https ? "https://" : "http://";
               string request_url = scheme + request.get_header_value("Host") + path;
               populate_push_configurations(dependency_filename,
                                            request_url,
                                            response,
-                                           current_loading_page);
+                                           current_loading_page,
+                                           using_vroom);
             }
 
             if (!response.has_header("Access-Control-Allow-Origin")) {
