@@ -63,7 +63,7 @@ void PacFile::WriteProxies(vector<pair<string, Address>> hostnames_to_addresses,
     auto hostname = hostname_to_address_pair.first;
     auto address = hostname_to_address_pair.second;
     ss << "if (shExpMatch(url, \"";
-    ss << ((address.port() == 80) ? "http:*" : "https:*");
+    ss << ((address.port() == 80) ? "http://" : "https://");
     ss << hostname_to_address_pair.first << "*";
     ss << "\")) ";
     if (address.port() == 80) {
@@ -96,7 +96,7 @@ void PacFile::WriteProxies(vector<pair<string, Address>> hostnames_to_addresses,
     auto hostname = hostname_to_address_pair.first;
     auto address = hostname_to_address_pair.second;
     ss << "if (shExpMatch(url, \"";
-    ss << ((address.port() == 80) ? "http:*" : "https:*");
+    ss << ((address.port() == 80) ? "http://" : "https://");
     ss << hostname_to_address_pair.first << "*";
     ss << "\")) ";
     if ( direct_hostnames.find(hostname) == direct_hostnames.end() ) {
@@ -130,7 +130,7 @@ void PacFile::WriteProxies(
     auto address = hostname_to_address_pair.second;
     auto hostname_to_reverse_server_name_pair = hostnames_to_reverse_proxy_name[i];
     ss << "if (shExpMatch(url, \"";
-    ss << ((address.port() == 80) ? "http:*" : "https:*");
+    ss << ((address.port() == 80) ? "http://" : "https://");
     ss << hostname_to_address_pair.first << "*";
     ss << "\"))";
     if (address.port() == 80) {
