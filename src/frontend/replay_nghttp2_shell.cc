@@ -222,50 +222,42 @@ int main( int argc, char *argv[] )
                   }
                   added_ip_addresses.insert( address.ip() );
 
-                  if (domains_adopt_h2.find(hostname) != domains_adopt_h2.end()) {
+                  // Check whether this IP corresponds to a reverse proxy IP or not.
+                  if ( webserver_ip_to_reverse_proxy_ip.find( address ) == webserver_ip_to_reverse_proxy_ip.end() ) {
+                    // There isn't an entry for the webserver ip in the map.
+ 
+                    // Setup interfaces for reverse proxies.
+                    string reverse_proxy_name = to_string( interface_counter + 1 ) + ".reverse.com";
+                    string reverse_proxy_device_name = "reverse" + to_string( interface_counter + 1 );
+                    Address reverse_proxy_address = Address::reverse_proxy(interface_counter + 1, address.port());
+                    add_dummy_interface( reverse_proxy_device_name, reverse_proxy_address );
 
-                    // Check whether this IP corresponds to a reverse proxy IP or not.
-                    if ( webserver_ip_to_reverse_proxy_ip.find( address ) == webserver_ip_to_reverse_proxy_ip.end() ) {
-                      // There isn't an entry for the webserver ip in the map.
-   
-                      // Setup interfaces for reverse proxies.
-                      string reverse_proxy_name = to_string( interface_counter + 1 ) + ".reverse.com";
-                      string reverse_proxy_device_name = "reverse" + to_string( interface_counter + 1 );
-                      Address reverse_proxy_address = Address::reverse_proxy(interface_counter + 1, address.port());
-                      add_dummy_interface( reverse_proxy_device_name, reverse_proxy_address );
-
-                      webserver_ip_to_reverse_proxy_ip[address] = reverse_proxy_address;
-                      webserver_ip_to_reverse_proxy_name[address] = reverse_proxy_name;
-                      interface_counter++;
-                    }
-
-                    // Populuate name resolution pairs.
-                    auto reverse_proxy_address = webserver_ip_to_reverse_proxy_ip[address];
-                    auto reverse_proxy_name = webserver_ip_to_reverse_proxy_name[address];
-                    if (reverse_proxy_address.port() == 80) {
-                      // CASE: HTTP; don't resolve the actual domain, but resolve reverse proxy to the 
-                      // reverse proxy address instead. The client can now resolve the proxy.
-                      name_resolution_pairs.push_back(make_pair(reverse_proxy_name, reverse_proxy_address));
-
-                      // Add an entry for HTTPS just in case and point it to the default webserver.
-                      // name_resolution_pairs.push_back(make_pair(hostname, http_default_reverse_proxy_address));
-                    } else if (reverse_proxy_address.port() == 443) {
-                      // CASE: HTTPS; The client will have to directly connect to the reverse proxy.
-                      // The hostname of the domain should resolve directly to the reverse proxy address.
-                      name_resolution_pairs.push_back(make_pair(hostname, reverse_proxy_address));
-                    }
-
-                    // Populate other information.
-                    cout << "[h2] Hostname: " << hostname << " reverse proxy addr: " << reverse_proxy_address.str() << " host IP: " << address.str() << endl;
-                    hostname_to_reverse_proxy_addresses.push_back(make_pair(hostname, reverse_proxy_address));
-                    hostname_to_reverse_proxy_names.push_back(make_pair(hostname, reverse_proxy_name));
-                    webserver_to_reverse_proxy_addresses.push_back(make_pair(address, reverse_proxy_address));
-                  } else {
-                    // we don't adopt HTTP/2
-                    name_resolution_pairs.push_back(make_pair(hostname, address));
-                    cout << "[HTTP/1.1] Hostname: " << hostname << " reverse proxy addr: " << " host IP: " << address.str() << endl;
-                    hostname_to_reverse_proxy_addresses.push_back(make_pair(hostname, address));
+                    webserver_ip_to_reverse_proxy_ip[address] = reverse_proxy_address;
+                    webserver_ip_to_reverse_proxy_name[address] = reverse_proxy_name;
+                    interface_counter++;
                   }
+
+                  // Populuate name resolution pairs.
+                  auto reverse_proxy_address = webserver_ip_to_reverse_proxy_ip[address];
+                  auto reverse_proxy_name = webserver_ip_to_reverse_proxy_name[address];
+                  if (reverse_proxy_address.port() == 80) {
+                    // CASE: HTTP; don't resolve the actual domain, but resolve reverse proxy to the 
+                    // reverse proxy address instead. The client can now resolve the proxy.
+                    name_resolution_pairs.push_back(make_pair(reverse_proxy_name, reverse_proxy_address));
+
+                    // Add an entry for HTTPS just in case and point it to the default webserver.
+                    // name_resolution_pairs.push_back(make_pair(hostname, http_default_reverse_proxy_address));
+                  } else if (reverse_proxy_address.port() == 443) {
+                    // CASE: HTTPS; The client will have to directly connect to the reverse proxy.
+                    // The hostname of the domain should resolve directly to the reverse proxy address.
+                    name_resolution_pairs.push_back(make_pair(hostname, reverse_proxy_address));
+                  }
+
+                  // Populate other information.
+                  cout << "[h2] Hostname: " << hostname << " reverse proxy addr: " << reverse_proxy_address.str() << " host IP: " << address.str() << endl;
+                  hostname_to_reverse_proxy_addresses.push_back(make_pair(hostname, reverse_proxy_address));
+                  hostname_to_reverse_proxy_names.push_back(make_pair(hostname, reverse_proxy_name));
+                  webserver_to_reverse_proxy_addresses.push_back(make_pair(address, reverse_proxy_address));
                   webserver_ip_to_hostname.insert( make_pair(address, hostname) );
               }
 
