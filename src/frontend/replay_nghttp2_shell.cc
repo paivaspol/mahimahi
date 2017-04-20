@@ -303,10 +303,7 @@ int main( int argc, char *argv[] )
               cout << hostname_to_reverse_proxy_addresses.size() << endl;
               // pac_file.WriteProxies(hostname_to_reverse_proxy_addresses,
               //                       hostname_to_reverse_proxy_names);
-              pac_file.WriteProxies( hostname_to_reverse_proxy_addresses,
-                                    http_default_webserver_name,
-                                    http_default_webserver_address,
-                                    domains_adopt_h2 );
+              pac_file.WriteProxies(hostname_to_reverse_proxy_addresses);
 
               /* set up DNS server */
               TempFile dnsmasq_hosts( "/tmp/replayshell_hosts" );
