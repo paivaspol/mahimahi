@@ -272,12 +272,12 @@ int main( int argc, char *argv[] )
                 bool single_threaded = domains_adopt_h2.find(hostname) != domains_adopt_h2.end();
                 cout << "Hostname: " << hostname << " ip: " << ip_port.str() << " single_threaded: " << to_string(single_threaded) << endl;
                 if (path_to_dependency_file == "None") {
-                  servers.emplace_back( ip_port, working_directory, directory, escaped_page, single_threaded );
+                  servers.emplace_back( ip_port, working_directory, directory, escaped_page, true );
                 } else {
                   if ( single_threaded ) {
-                    servers.emplace_back( ip_port, working_directory, directory, escaped_page, path_to_dependency_file, single_threaded);
+                    servers.emplace_back( ip_port, working_directory, directory, escaped_page, path_to_dependency_file, true );
                   } else {
-                    servers.emplace_back( ip_port, working_directory, directory, escaped_page, single_threaded);
+                    servers.emplace_back( ip_port, working_directory, directory, escaped_page, true );
                   }
                 }
               }
@@ -289,14 +289,13 @@ int main( int argc, char *argv[] )
                 auto webserver_address = webserver_to_reverse_proxy_ip_pair.first;
                 auto reverse_proxy_address = webserver_to_reverse_proxy_ip_pair.second;
                 auto hostname = webserver_ip_to_hostname[webserver_address];
-                bool single_threaded = domains_adopt_h2.find(hostname) != domains_adopt_h2.end();
                 reverse_proxies.emplace_back(reverse_proxy_address,
                                           webserver_address,
                                           nghttpx_path,
                                           nghttpx_key_path,
                                           nghttpx_cert_path,
                                           escaped_page,
-                                          single_threaded );
+                                          true );
               }
 
               PacFile pac_file("/home/vaspol/Sites/config_testing.pac");
