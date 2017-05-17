@@ -404,6 +404,19 @@ int check_redirect( MahimahiProtobufs::RequestResponse saved_record, int previou
     return previous_score;
 }
 
+set< string > get_cachable_resources(const string cache_enabled_filename) {
+  ifstream infile(cache_enabled_filename);
+  string line;
+  set< string > result;
+  if (infile.is_open()) {
+    while (getline(infile, line)) {
+      result.insert(line);
+    }
+    infile.close();
+  }
+  return result;
+}
+
 int main( void )
 {
     try {
@@ -422,6 +435,19 @@ int main( void )
         SystemCall( "chdir", chdir( working_directory.c_str() ) );
 
         const vector< string > files = list_directory_contents( recording_directory );
+
+        // Get the file that contains the list of resources to be cachable.
+        // WARNING: Hard coded path.
+        auto cache_enabled_filename = "/home/vaspol/Research/MobileWebOptimization/page_load_setup/cache_enabled/" + current_loading_page;
+        const set< string > cachable_resources = get_cachable_resources(cache_enabled_filename);
+        ofstream myfile;
+        myfile.open("caching_debug", ios::app);
+        for (auto r : cachable_resources) {
+          myfile << r;
+        }
+        myfile << endl;
+        myfile << "Resource: " << path << endl;
+        myfile.close();
 
         unsigned int best_score = 0;
         MahimahiProtobufs::RequestResponse best_match;
@@ -460,7 +486,12 @@ int main( void )
             }
 
             /* Add the cache-control header and set to 3600. */
-            response.add_header_after_parsing( "Cache-Control: max-age=60" );
+            auto host = request.get_header_value("Host");
+            if (cachable_resources.find(host + path) != cachable_resources.end()) {
+              response.add_header_after_parsing( "Cache-Control: max-age=3600" );
+            } else {
+              response.add_header_after_parsing( "Cache-Control: no-store" );
+            }
             // response.add_header_after_parsing( "Cache-Control: no-cache, no-store, must-revalidate max-age=0" );
 
             if (dependency_filename != "None") {
