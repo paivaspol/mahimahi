@@ -419,15 +419,6 @@ int main( void )
         // WARNING: Hard coded path.
         auto cache_enabled_filename = "/home/vaspol/Research/MobileWebOptimization/page_load_setup/cache_enabled/" + current_loading_page;
         const set< string > cachable_resources = get_cachable_resources(cache_enabled_filename);
-        ofstream myfile;
-        myfile.open("caching_debug", ios::app);
-        for (auto r : cachable_resources) {
-          myfile << r;
-        }
-        myfile << endl;
-        myfile << "Resource: " << path << endl;
-        myfile.close();
-
         unsigned int best_score = 0;
         MahimahiProtobufs::RequestResponse best_match;
 
