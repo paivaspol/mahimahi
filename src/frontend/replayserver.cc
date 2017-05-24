@@ -113,19 +113,16 @@ string strip_hostname( const string & url, const string & path ) {
   return retval;
 }
 
-string extract_hostname( const string & url ) {
+string strip_protocol( const string & url ) {
   string http = "http://";
   string https = "https://";
 
   string retval = url;
-  if ( url.find( http ) == 0 ) {
-    retval = url.substr( http.length(), url.length() );
-  } else if ( url.find( https ) == 0 ) {
+  if ( url.find( https ) == 0 ) {
     retval = url.substr( https.length(), url.length() );
+  } else if ( url.find( http ) == 0 ) {
+    retval = url.substr( http.length(), url.length() );
   }
-
-  const auto index = retval.find( "/" );
-  retval = retval.substr( 0, index );
   return retval;
 }
 
@@ -136,6 +133,13 @@ string strip_www( const string & url ) {
   if ( retval.find( www ) == 0 ) {
     retval = retval.substr( www.length(), retval.length() );
   }
+  return retval;
+}
+
+string extract_hostname( const string & url ) {
+  string retval = strip_protocol(url);
+  const auto index = retval.find( "/" );
+  retval = retval.substr( 0, index );
   return retval;
 }
 
@@ -255,7 +259,8 @@ string infer_resource_type(const string & resource_type) {
 void populate_push_configurations( const string & dependency_file, 
                                    const string & request_url, 
                                    HTTPResponse & response, 
-                                   const string & current_loading_page ) {
+                                   const string & current_loading_page,
+                                   const set<string> & cachable_resources ) {
   map< string, vector< string >> dependencies_map;
   map< string, string > dependency_type_map;
   map< string, string > dependency_priority_map;
@@ -294,16 +299,6 @@ void populate_push_configurations( const string & dependency_file,
       for (auto list_it = values.begin(); list_it != values.end(); ++list_it) {
         // Push all dependencies for the location.
         string dependency_filename = *list_it;
-        // if (((dependency_priority_map[dependency_filename] == "VeryHigh" ||
-        //     dependency_priority_map[dependency_filename] == "High" ||
-        //     dependency_priority_map[dependency_filename] == "Medium") &&
-        //     (dependency_type_map[dependency_filename] == "Document" ||
-        //     dependency_type_map[dependency_filename] == "Script" ||
-        //     dependency_type_map[dependency_filename] == "Stylesheet")) ||
-        //     (dependency_filename == "http://fifa.worldsportshops.com/85122.png" ||
-        //      dependency_filename == "http://fifa.worldsportshops.com/85123.png" ||
-        //      dependency_filename == "http://fifa.worldsportshops.com/85104.png" ||
-        //      dependency_filename == "http://fifa.worldsportshops.com/85103.png")) {
         string dependency_priority = dependency_vroom_priority_map[dependency_filename];
         string dependency_type = dependency_type_map[dependency_filename];
         if (dependency_type != "XHR" ) {
@@ -316,10 +311,11 @@ void populate_push_configurations( const string & dependency_file,
               + infer_resource_type(dependency_type_map[dependency_filename]);
             // Add push or nopush directive based on the hostname of the URL.
             string request_hostname = strip_www( extract_hostname( dependency_filename ));
-            if ( request_hostname != current_loading_page || dependency_type == "XHR" ) {
+            if ( (request_hostname != current_loading_page || dependency_type == "XHR" ) && 
+                (cachable_resources.find( strip_protocol(dependency_filename) ) != cachable_resources.end())) {
               link_resource_string += ";nopush";
+              link_resources.push_back(link_resource_string);
             }
-            link_resources.push_back(link_resource_string);
           } else if (dependency_priority == "Semi-important") {
             string resource_string = dependency_filename + ";" + 
                                                  dependency_type_map[dependency_filename];
@@ -491,7 +487,8 @@ int main( void )
               populate_push_configurations(dependency_filename,
                                            request_url,
                                            response,
-                                           current_loading_page);
+                                           current_loading_page,
+                                           cachable_resources);
             }
 
             if (!response.has_header("Access-Control-Allow-Origin")) {
