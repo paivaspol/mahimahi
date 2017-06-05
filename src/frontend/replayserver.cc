@@ -288,7 +288,7 @@ void populate_push_configurations( const string & dependency_file,
       auto values = dependencies_map[key];
       for (auto list_it = values.begin(); list_it != values.end(); ++list_it) {
         string dependency_filename = *list_it;
-        string dependency_priority = dependency_vroom_priority_map[dependency_filename];
+        // string dependency_priority = dependency_vroom_priority_map[dependency_filename];
         string link_resource_string = "<" + dependency_filename + ">;rel=preload"
           + infer_resource_type(dependency_type_map[dependency_filename]);
 
