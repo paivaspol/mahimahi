@@ -41,6 +41,11 @@ mm_phone_webrecord_SOURCES = phone_recordshell.cc squid_proxy.hh squid_proxy.cc
 mm_phone_webrecord_LDADD = -lrt ../httpserver/libhttpserver.a ../http/libhttp.a ../protobufs/libhttprecordprotos.a ../util/libutil.a $(protobuf_LIBS) $(libcrypto_LIBS) $(libssl_LIBS)
 mm_phone_webrecord_LDFLAGS = -pthread
 
+bin_PROGRAMS += mm-phone-webrecord-using-vpn
+mm_phone_webrecord_using_vpn_SOURCES = phone_recordshell_using_vpn.cc 
+mm_phone_webrecord_using_vpn_LDADD = -lrt ../httpserver/libhttpserver.a ../http/libhttp.a ../protobufs/libhttprecordprotos.a ../util/libutil.a $(protobuf_LIBS) $(libcrypto_LIBS) $(libssl_LIBS)
+mm_phone_webrecord_using_vpn_LDFLAGS = -pthread
+
 bin_PROGRAMS += mm-delayshell-port-forwarded
 mm_delayshell_port_forwarded_SOURCES = delayshell_with_forwarding.cc delay_queue.hh delay_queue.cc
 mm_delayshell_port_forwarded_LDADD = -lrt ../util/libutil.a ../packet/libpacket.a
@@ -108,5 +113,7 @@ install-exec-hook:
 	chmod u+s $(DESTDIR)$(bindir)/mm-delayshell-port-forwarded
 	chown root $(DESTDIR)$(bindir)/mm-phone-webrecord
 	chmod u+s $(DESTDIR)$(bindir)/mm-phone-webrecord
+	chown root $(DESTDIR)$(bindir)/mm-phone-webrecord-using-vpn
+	chmod u+s $(DESTDIR)$(bindir)/mm-phone-webrecord-using-vpn
 	chown root $(DESTDIR)$(bindir)/mm-per-packet-delay-replay
 	chmod u+s $(DESTDIR)$(bindir)/mm-per-packet-delay-replay
