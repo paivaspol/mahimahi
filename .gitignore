@@ -45,4 +45,6 @@ src/frontend/mm-delayshell-port-forwarded
 src/frontend/mm-http1-proxyreplay
 src/frontend/mm-per-packet-delay-replay
 src/frontend/mm-phone-webrecord
-
+src/frontend/mm-http1-proxyreplay-no-pac
+src/frontend/mm-http1-proxyreplay-no-proxy
+src/frontend/mm-phone-webrecord-using-vpn
