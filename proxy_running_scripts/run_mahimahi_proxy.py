@@ -30,7 +30,6 @@ MM_DELAY_WITH_NAMESERVER = 'mm-delay-with-nameserver'
 NGHTTPX = 'nghttpx'
 APACHE = 'apache'
 PAGE = 'page'
-SQUID_PORT = 'squid_port'
 SQUID = 'squid'
 OPENVPN = 'openvpn'
 OPENVPN_PORT = 'openvpn_port'
@@ -44,7 +43,7 @@ REPLAY_MODE = 'replay_mode'
 
 CONFIG_FIELDS = [ BUILD_PREFIX, PROXY_REPLAY_PATH, NGHTTPX_PATH, NGHTTPX_PORT, \
                   NGHTTPX_KEY, NGHTTPX_CERT, BASE_RECORD_DIR, PHONE_RECORD_PATH, \
-                  SQUID_PORT, BASE_RESULT_DIR, DELAYSHELL_WITH_PORT_FORWARDED, \
+                  BASE_RESULT_DIR, DELAYSHELL_WITH_PORT_FORWARDED, \
                   HTTP1_PROXY_REPLAY_PATH, HTTP1_REPLAY_NO_PROXY_PATH, OPENVPN_PORT, \
                   DEPENDENCY_DIRECTORY_PATH, START_TCPDUMP, SQUID ]
 
@@ -197,19 +196,16 @@ def stop_delay_replay_proxy():
 
 @app.route("/start_recording")
 def start_recording():
-    print 'start recording'
     page = request.args[PAGE]
     request_time = request.args[TIME]
+    print 'start recording of {0} at {1}'.format(page, request_time)
     mkdir_cmd = 'mkdir -p {0}'.format(os.path.join(proxy_config[BASE_RECORD_DIR], request_time))
     subprocess.call(mkdir_cmd, shell=True)
     record_path = os.path.join(proxy_config[BASE_RECORD_DIR], request_time, escape_page(page))
     if os.path.exists(record_path):
         rm_cmd = 'rm -r {0}'.format(record_path)
         subprocess.call(rm_cmd, shell=True)
-    command = '{0} {1} {2}'.format(
-                            proxy_config[BUILD_PREFIX] + proxy_config[PHONE_RECORD_PATH], \
-                            os.path.join(proxy_config[BASE_RECORD_DIR], request_time, escape_page(page)), \
-                            proxy_config[SQUID_PORT])
+    command = '{0} {1}'.format(proxy_config[BUILD_PREFIX] + proxy_config[PHONE_RECORD_PATH], record_path)
     process = subprocess.Popen(command, shell=True)
 
     # Start tcpdump, if necessary.
@@ -220,13 +216,14 @@ def start_recording():
 
 @app.route("/stop_recording")
 def stop_recording():
-    processes = [ MM_PHONE_WEBRECORD, SQUID ]
+    print 'Stopping recording'
+    processes = [ MM_PHONE_WEBRECORD, 'openvpn' ]
     for process in processes:
         command = 'sudo pkill {0}'.format(process)
         print command
         subprocess.Popen(command.split())
 
-    print proxy_config[START_TCPDUMP]
+    # print proxy_config[START_TCPDUMP]
     if proxy_config[START_TCPDUMP] == 'True':
         print 'Stopping tcpdump'
         request_time = request.args[TIME]
