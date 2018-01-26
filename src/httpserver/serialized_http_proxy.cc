@@ -1,6 +1,6 @@
-/* -*-mode:c++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
-
 #include <arpa/inet.h>
+#include <chrono>
+#include <ctime>
 #include <fstream>
 #include <iostream>
 #include <linux/netfilter_ipv4.h>
@@ -18,6 +18,8 @@
 #include "http_response_parser.hh"
 #include "poller.hh"
 #include "secure_socket.hh"
+#include "serialized_http_proxy.hh"
+#include "serializer.hh"
 #include "socket.hh"
 #include "system_runner.hh"
 #include "temp_file.hh"
@@ -25,15 +27,13 @@
 using namespace std;
 using namespace PollerShortNames;
 
-HTTPProxy::HTTPProxy(const Address &listener_addr)
-    : listener_socket_(), server_context_(SERVER), client_context_(CLIENT) {
-  listener_socket_.bind(listener_addr);
-  listener_socket_.listen();
-}
+SerializedHTTPProxy::SerializedHTTPProxy(const Address &listener_addr)
+    : HTTPProxy(listener_addr), serializer_() {}
 
 template <class SocketType>
-void HTTPProxy::loop(SocketType &server, SocketType &client,
-                     HTTPBackingStore &backing_store) {
+void SerializedHTTPProxy::serialized_loop(SocketType &server,
+                                          SocketType &client,
+                                          HTTPBackingStore &backing_store) {
   Poller poller;
 
   HTTPRequestParser request_parser;
@@ -73,16 +73,31 @@ void HTTPProxy::loop(SocketType &server, SocketType &client,
       [&]() { return not request_parser.empty(); }));
 
   /* completed responses from server are serialized and sent to client */
-  poller.add_action(
-      Poller::Action(client, Direction::Out,
-                     [&]() {
-                       client.write(response_parser.front().str());
-                       // complete()
-                       backing_store.save(response_parser.front(), server_addr);
-                       response_parser.pop();
-                       return ResultType::Continue;
-                     },
-                     [&]() { return not response_parser.empty(); }));
+  poller.add_action(Poller::Action(
+      client, Direction::Out,
+      [&]() {
+        auto url = response_parser.front().request().get_url();
+        serializer_.register_request(url);
+        auto start = chrono::system_clock::now();
+        auto start_epoch = start.time_since_epoch();
+        auto start_seconds =
+            chrono::duration_cast<chrono::milliseconds>(start_epoch);
+        cout << "URL: " << url << " Start: " << to_string(start_seconds.count())
+             << endl;
+        client.write(response_parser.front().str());
+        serializer_.send_request_complete();
+        auto end = chrono::system_clock::now();
+        auto end_epoch = end.time_since_epoch();
+        auto end_seconds =
+            chrono::duration_cast<chrono::milliseconds>(end_epoch);
+        cout << "URL: " << url << " End: " << to_string(end_seconds.count())
+             << endl;
+
+        backing_store.save(response_parser.front(), server_addr);
+        response_parser.pop();
+        return ResultType::Continue;
+      },
+      [&]() { return not response_parser.empty(); }));
 
   while (true) {
     if (poller.poll(-1).result == Poller::Result::Type::Exit) {
@@ -91,7 +106,7 @@ void HTTPProxy::loop(SocketType &server, SocketType &client,
   }
 }
 
-void HTTPProxy::handle_tcp(HTTPBackingStore &backing_store) {
+void SerializedHTTPProxy::handle_tcp(HTTPBackingStore &backing_store) {
   thread newthread(
       [&](TCPSocket client) {
         try {
@@ -104,7 +119,7 @@ void HTTPProxy::handle_tcp(HTTPBackingStore &backing_store) {
           server.connect(server_addr);
 
           if (server_addr.port() != 443) { /* normal HTTP */
-            return loop(server, client, backing_store);
+            return serialized_loop(server, client, backing_store);
           }
 
           /* handle TLS */
@@ -116,7 +131,7 @@ void HTTPProxy::handle_tcp(HTTPBackingStore &backing_store) {
               server_context_.new_secure_socket(move(client)));
           tls_client.accept();
 
-          loop(tls_server, tls_client, backing_store);
+          serialized_loop(tls_server, tls_client, backing_store);
         } catch (const exception &e) {
           print_exception(e);
         }
@@ -125,15 +140,4 @@ void HTTPProxy::handle_tcp(HTTPBackingStore &backing_store) {
 
   /* don't wait around for the reply */
   newthread.detach();
-}
-
-/* register this HTTPProxy's TCP listener socket to handle events with
-   the given event_loop, saving request-response pairs to the given
-   backing_store (which is captured and must continue to persist) */
-void HTTPProxy::register_handlers(EventLoop &event_loop,
-                                  HTTPBackingStore &backing_store) {
-  event_loop.add_simple_input_handler(tcp_listener(), [&]() {
-    handle_tcp(backing_store);
-    return ResultType::Continue;
-  });
 }

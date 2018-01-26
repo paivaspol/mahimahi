@@ -30,7 +30,6 @@ MM_DELAY_WITH_NAMESERVER = 'mm-delay-with-nameserver'
 NGHTTPX = 'nghttpx'
 APACHE = 'apache'
 PAGE = 'page'
-SQUID = 'squid'
 OPENVPN = 'openvpn'
 OPENVPN_PORT = 'openvpn_port'
 START_TCPDUMP = 'start_tcpdump'
@@ -45,33 +44,9 @@ CONFIG_FIELDS = [ BUILD_PREFIX, PROXY_REPLAY_PATH, NGHTTPX_PATH, NGHTTPX_PORT, \
                   NGHTTPX_KEY, NGHTTPX_CERT, BASE_RECORD_DIR, PHONE_RECORD_PATH, \
                   BASE_RESULT_DIR, DELAYSHELL_WITH_PORT_FORWARDED, \
                   HTTP1_PROXY_REPLAY_PATH, HTTP1_REPLAY_NO_PROXY_PATH, OPENVPN_PORT, \
-                  DEPENDENCY_DIRECTORY_PATH, START_TCPDUMP, SQUID ]
+                  DEPENDENCY_DIRECTORY_PATH, START_TCPDUMP ]
 
 app = Flask(__name__)
-
-@app.route("/start_squid_proxy")
-def start_squid_proxy():
-    # Start tcpdump, if necessary.
-    if proxy_config[START_TCPDUMP] == 'True':
-        start_tcpdump()
-
-    squid_path = proxy_config[BUILD_PREFIX] +proxy_config[SQUID]
-    print 'squid path: ' + squid_path
-    command = '{0}'.format(squid_path)
-    subprocess.call(command)
-    return 'OK'
-
-
-@app.route("/stop_squid_proxy")
-def stop_squid_proxy():
-    command = 'pkill squid'
-    subprocess.call(command.split())
-
-    # Start tcpdump, if necessary.
-    if proxy_config[START_TCPDUMP] == 'True':
-        stop_tcpdump('/home/ubuntu', 'regular_load')
-
-    return 'OK'
 
 proxy_process = None
 
@@ -238,7 +213,7 @@ def stop_recording():
 
 @app.route("/is_record_proxy_running")
 def is_record_proxy_running():
-    process_names = [ 'squid' ]
+    process_names = [ 'openvpn' ]
     result = ''
     for process_name in process_names:
         result += check_process(process_name)

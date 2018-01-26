@@ -95,6 +95,8 @@ void HTTPProxyDelay::handle_tcp()
                 /* get original destination for connection request */
                 Address server_addr = client.original_dest();
 
+		cout << "Starting new thread for server: " << server_addr.str() << endl;
+
                 /* create socket and connect to original destination and send original request */
                 TCPSocket server;
                 server.connect( server_addr );
