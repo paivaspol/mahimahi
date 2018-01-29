@@ -30,8 +30,9 @@ int main(int argc, char *argv[]) {
 
     check_requirements(argc, argv);
 
-    if (argc < 2) {
-      throw runtime_error("Usage: " + string(argv[0]) + " directory");
+    if (argc < 3) {
+      throw runtime_error("Usage: " + string(argv[0]) +
+                          " directory prefetch-urls-filename");
     }
 
     /* Make sure directory ends with '/' so we can prepend directory to file
@@ -69,7 +70,7 @@ int main(int argc, char *argv[]) {
     NAT nat_rule(ingress_addr);
 
     /* set up http proxy for tcp */
-    SerializedHTTPProxy http_proxy(egress_addr);
+    SerializedHTTPProxy http_proxy(egress_addr, argv[3]);
 
     /* set up dnat */
     DNAT dnat(http_proxy.tcp_listener().local_address(), egress_name);

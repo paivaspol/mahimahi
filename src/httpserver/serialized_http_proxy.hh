@@ -19,7 +19,8 @@ private:
   void handle_tcp(HTTPBackingStore &backing_store) override;
 
 public:
-  SerializedHTTPProxy(const Address &listener_addr);
+  SerializedHTTPProxy(const Address &listener_addr,
+                      const std::string &prefetch_urls_filename);
 };
 
 #endif /* SERIALIZED_HTTP_PROXY_HH */

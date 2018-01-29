@@ -27,8 +27,9 @@
 using namespace std;
 using namespace PollerShortNames;
 
-SerializedHTTPProxy::SerializedHTTPProxy(const Address &listener_addr)
-    : HTTPProxy(listener_addr), serializer_() {}
+SerializedHTTPProxy::SerializedHTTPProxy(const Address &listener_addr,
+                                         const string &prefetch_urls_filename)
+    : HTTPProxy(listener_addr), serializer_(prefetch_urls_filename) {}
 
 template <class SocketType>
 void SerializedHTTPProxy::serialized_loop(SocketType &server,

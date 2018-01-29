@@ -14,6 +14,7 @@ PROXY_REPLAY_PATH = 'mm-proxyreplay'
 HTTP1_PROXY_REPLAY_PATH = 'mm-http1-proxyreplay'
 HTTP1_REPLAY_NO_PROXY_PATH = 'mm-http1-replay-no-proxy'
 PHONE_RECORD_PATH = 'mm-phone-webrecord'
+THIRD_PARTY_SPEEDUP_PROXY = 'mm-third-party-speedup-proxy'
 DELAYSHELL_WITH_PORT_FORWARDED = 'mm-delayshell-with-port-forwarded'
 NGHTTPX_PATH = 'nghttpx'
 NGHTTPX_PORT = 'nghttpx_port'
@@ -22,11 +23,13 @@ NGHTTPX_CERT = 'nghttpx_cert'
 BASE_RECORD_DIR = 'base_record_dir'
 BASE_RESULT_DIR = 'base_result_dir'
 DEPENDENCY_DIRECTORY_PATH = 'dependency_directory_path'
+THIRD_PARTY_SPEEDUP_PREFETCH_DIR_PATH = 'third_party_speedup_prefetch_dir_path'
 
 MM_PROXYREPLAY = 'mm-proxyreplay'
 MM_PHONE_WEBRECORD = 'mm-phone-webrecord'
 MM_DELAYSHELL_WITH_PORT_FORWARDED = 'mm-delayshell-port-forwarded'
 MM_DELAY_WITH_NAMESERVER = 'mm-delay-with-nameserver'
+MM_THIRD_PARTY_SPEEDUP_PROXY = 'mm-serialized-phone-webrecord-using-vpn'
 NGHTTPX = 'nghttpx'
 APACHE = 'apache'
 PAGE = 'page'
@@ -42,9 +45,9 @@ REPLAY_MODE = 'replay_mode'
 
 CONFIG_FIELDS = [ BUILD_PREFIX, PROXY_REPLAY_PATH, NGHTTPX_PATH, NGHTTPX_PORT, \
                   NGHTTPX_KEY, NGHTTPX_CERT, BASE_RECORD_DIR, PHONE_RECORD_PATH, \
-                  BASE_RESULT_DIR, DELAYSHELL_WITH_PORT_FORWARDED, \
+                  BASE_RESULT_DIR, DELAYSHELL_WITH_PORT_FORWARDED, THIRD_PARTY_SPEEDUP_PROXY, \
                   HTTP1_PROXY_REPLAY_PATH, HTTP1_REPLAY_NO_PROXY_PATH, OPENVPN_PORT, \
-                  DEPENDENCY_DIRECTORY_PATH, START_TCPDUMP ]
+                  DEPENDENCY_DIRECTORY_PATH, THIRD_PARTY_SPEEDUP_PREFETCH_DIR_PATH, START_TCPDUMP ]
 
 app = Flask(__name__)
 
@@ -169,6 +172,38 @@ def stop_delay_replay_proxy():
     stop_proxy()
     return 'Proxy Stopped'
 
+
+@app.route("/start_third_party_speedup_proxy")
+def start_third_party_speedup_proxy():
+    page = request.args[PAGE]
+    request_time = request.args[TIME]
+    print 'start recording of {0} at {1}'.format(page, request_time)
+    mkdir_cmd = 'mkdir -p {0}'.format(os.path.join(proxy_config[BASE_RECORD_DIR], request_time))
+    subprocess.call(mkdir_cmd, shell=True)
+    record_path = os.path.join(proxy_config[BASE_RECORD_DIR], request_time, escape_page(page))
+    if os.path.exists(record_path):
+        rm_cmd = 'rm -r {0}'.format(record_path)
+        subprocess.call(rm_cmd, shell=True)
+    prefetch_resources_filename = os.path.join(proxy_config[THIRD_PARTY_SPEEDUP_PREFETCH_DIR_PATH], escape_page(page))
+    command = '{0} {1} {2}'.format(proxy_config[BUILD_PREFIX] + proxy_config[THIRD_PARTY_SPEEDUP_PROXY], record_path, prefetch_resources_filename)
+    process = subprocess.Popen(command, shell=True)
+
+    # Start tcpdump, if necessary.
+    if proxy_config[START_TCPDUMP] == 'True':
+        start_tcpdump()
+    return 'Proxy Started'
+
+
+@app.route("/stop_third_party_speedup_proxy")
+def stop_third_party_speedup_proxy():
+    print 'Stopping recording'
+    processes = [ MM_THIRD_PARTY_SPEEDUP_PROXY, 'openvpn' ]
+    for process in processes:
+        command = 'sudo pkill {0}'.format(process)
+        subprocess.Popen(command.split())
+    return 'Proxy Stopped'
+
+
 @app.route("/start_recording")
 def start_recording():
     page = request.args[PAGE]
@@ -211,14 +246,24 @@ def stop_recording():
 
     return 'Proxy Stopped'
 
+
+@app.route("/is_third_party_speedup_proxy_running")
+def is_third_party_speedup_proxy_running():
+    process_names = [ 'openvpn' ]
+    result = ''
+    for process_name in process_names:
+        result += check_process(process_name)
+    return result.strip()
+
+
 @app.route("/is_record_proxy_running")
 def is_record_proxy_running():
     process_names = [ 'openvpn' ]
     result = ''
     for process_name in process_names:
         result += check_process(process_name)
-
     return result.strip()
+
 
 @app.route("/is_replay_proxy_running")
 def is_replay_proxy_running():
