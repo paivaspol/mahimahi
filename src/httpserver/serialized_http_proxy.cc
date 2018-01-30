@@ -31,9 +31,11 @@ using namespace PollerShortNames;
 
 SerializedHTTPProxy::SerializedHTTPProxy(const Address &listener_addr,
                                          const string &prefetch_urls_filename,
+                                         const string &request_order_filename,
                                          const string &page_url)
-    : HTTPProxy(listener_addr), serializer_(), prefetch_resources_(),
-      escaped_urls_(), prefetch_resources_order_(), page_url_(page_url) {
+    : HTTPProxy(listener_addr), serializer_(request_order_filename),
+      prefetch_resources_(), escaped_urls_(), prefetch_resources_order_(),
+      page_url_(page_url) {
   get_prefetch_resources(prefetch_resources_, prefetch_urls_filename);
 }
 
@@ -85,6 +87,8 @@ void SerializedHTTPProxy::serialized_loop(SocketType &server,
       [&]() {
         auto url = response_parser.front().request().get_url();
         string escaped_url = escape_page_url(url);
+        cout << "Escaped: " << escaped_url << " page_url: " << page_url_
+             << endl;
         if (escaped_url == page_url_) {
           // This is the main HTML. We have to inject the prefetch resources in
           // the form of Link preload headers.

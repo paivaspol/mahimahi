@@ -184,8 +184,10 @@ def start_third_party_speedup_proxy():
     if os.path.exists(record_path):
         rm_cmd = 'rm -r {0}'.format(record_path)
         subprocess.call(rm_cmd, shell=True)
-    prefetch_resources_filename = os.path.join(proxy_config[THIRD_PARTY_SPEEDUP_PREFETCH_DIR_PATH], escape_page(page))
-    command = '{0} {1} {2} {3}'.format(proxy_config[BUILD_PREFIX] + proxy_config[THIRD_PARTY_SPEEDUP_PROXY], record_path, prefetch_resources_filename, page)
+    prefetch_resources_filename = os.path.join(proxy_config[THIRD_PARTY_SPEEDUP_PREFETCH_DIR_PATH], 'prefetch', escape_page(page))
+    request_order_filename = os.path.join(proxy_config[THIRD_PARTY_SPEEDUP_PREFETCH_DIR_PATH], 'order', escape_page(page))
+    command = '{0} {1} {2} {3} {4}'.format(proxy_config[BUILD_PREFIX] + proxy_config[THIRD_PARTY_SPEEDUP_PROXY], record_path, prefetch_resources_filename, request_order_filename, page)
+    print command
     process = subprocess.Popen(command, shell=True)
 
     # Start tcpdump, if necessary.

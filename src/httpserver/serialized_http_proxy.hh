@@ -42,6 +42,7 @@ private:
 public:
   SerializedHTTPProxy(const Address &listener_addr,
                       const std::string &prefetch_urls_filename,
+                      const std::string &request_order_filename,
                       const std::string &page_url);
 };
 
