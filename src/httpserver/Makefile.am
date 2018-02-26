@@ -5,4 +5,6 @@ noinst_LIBRARIES = libhttpserver.a
 
 libhttpserver_a_SOURCES = http_proxy.hh http_proxy.cc \
         secure_socket.hh secure_socket.cc certificate.hh \
+	serialized_http_proxy.hh serialized_http_proxy.cc \
+	serializer.hh serializer.cc \
 	apache_configuration.hh

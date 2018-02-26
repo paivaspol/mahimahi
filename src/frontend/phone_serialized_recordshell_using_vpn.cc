@@ -1,22 +1,21 @@
 /* -*-mode:c++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
-
-#include <net/route.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
 #include <linux/if.h>
+#include <net/route.h>
 
 #include "address.hh"
-#include "backing_store.hh"
 #include "config.h"
 #include "dns_proxy.hh"
 #include "event_loop.hh"
 #include "exception.hh"
 #include "forwarder.hh"
-#include "http_proxy.hh"
 #include "interfaces.hh"
 #include "nat.hh"
 #include "netdevice.hh"
+#include "noop_store.hh"
+#include "serialized_http_proxy.hh"
 #include "socketpair.hh"
 #include "util.hh"
 #include "vpn.hh"
@@ -31,8 +30,10 @@ int main(int argc, char *argv[]) {
 
     check_requirements(argc, argv);
 
-    if (argc < 2) {
-      throw runtime_error("Usage: " + string(argv[0]) + " directory");
+    if (argc < 5) {
+      throw runtime_error("Usage: " + string(argv[0]) +
+                          " [directory] [prefetch-urls-filename] "
+                          "[request-order-filename] [page-url]");
     }
 
     /* Make sure directory ends with '/' so we can prepend directory to file
@@ -70,7 +71,9 @@ int main(int argc, char *argv[]) {
     NAT nat_rule(ingress_addr);
 
     /* set up http proxy for tcp */
-    HTTPProxy http_proxy(egress_addr);
+    string escaped_page_url = escape_page_url(argv[4]);
+    SerializedHTTPProxy http_proxy(egress_addr, argv[2], argv[3],
+                                   escaped_page_url);
 
     /* set up dnat */
     DNAT dnat(http_proxy.tcp_listener().local_address(), egress_name);
@@ -170,12 +173,12 @@ int main(int argc, char *argv[]) {
 
       make_directory(directory);
 
-      /* set up backing store to save to disk */
-      HTTPDiskStore disk_backing_store(directory);
+      /* set up backing store to do nothing */
+      NoopStore noop_store;
 
       EventLoop recordr_event_loop;
       dns_outside.register_handlers(recordr_event_loop);
-      http_proxy.register_handlers(recordr_event_loop, disk_backing_store);
+      http_proxy.register_handlers(recordr_event_loop, noop_store);
       return recordr_event_loop.loop();
     });
 
