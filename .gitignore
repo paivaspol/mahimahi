@@ -48,3 +48,5 @@ src/frontend/mm-phone-webrecord
 src/frontend/mm-http1-proxyreplay-no-pac
 src/frontend/mm-http1-proxyreplay-no-proxy
 src/frontend/mm-phone-webrecord-using-vpn
+src/frontend/mm-proxy-in-replay
+src/frontend/mm-serialized-phone-webrecord-using-vpn

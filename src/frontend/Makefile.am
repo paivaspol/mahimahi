@@ -82,9 +82,14 @@ mm_http1_proxyreplay_no_proxy_LDADD = -lrt ../util/libutil.a ../http/libhttp.a .
 mm_http1_proxyreplay_no_proxy_LDFLAGS = -pthread
 
 bin_PROGRAMS += mm-per-packet-delay-replay
-mm_per_packet_delay_replay_SOURCES = replay_nghttp2_shell.cc web_server.hh web_server.cc reverse_proxy.cc squid_proxy.hh squid_proxy.cc
+mm_per_packet_delay_replay_SOURCES = replay_nghttp2_shell.cc web_server.hh web_server.cc reverse_proxy.cc
 mm_per_packet_delay_replay_LDADD = -lrt ../util/libutil.a ../http/libhttp.a ../protobufs/libhttprecordprotos.a $(protobuf_LIBS)
 mm_per_packet_delay_replay_LDFLAGS = -pthread
+
+bin_PROGRAMS += mm-proxy-in-replay
+mm_proxy_in_replay_SOURCES = proxy_within_replayshell.cc web_server.hh web_server.cc reverse_proxy.cc 
+mm_proxy_in_replay_LDADD = -lrt ../util/libutil.a ../http/libhttp.a ../protobufs/libhttprecordprotos.a $(protobuf_LIBS)
+mm_proxy_in_replay_LDFLAGS = -pthread
 
 lib_LTLIBRARIES = libmod_deepcgi.la
 libmod_deepcgi_la_SOURCES = mod_deepcgi.c replayserver_filename.cc
@@ -124,3 +129,5 @@ install-exec-hook:
 	chmod u+s $(DESTDIR)$(bindir)/mm-serialized-phone-webrecord-using-vpn
 	chown root $(DESTDIR)$(bindir)/mm-per-packet-delay-replay
 	chmod u+s $(DESTDIR)$(bindir)/mm-per-packet-delay-replay
+	chown root $(DESTDIR)$(bindir)/mm-proxy-in-replay
+	chmod u+s $(DESTDIR)$(bindir)/mm-proxy-in-replay
