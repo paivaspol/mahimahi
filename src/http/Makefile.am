@@ -13,4 +13,5 @@ libhttp_a_SOURCES = http_request_parser.hh \
         chunked_parser.hh chunked_parser.cc \
         http_message.hh http_message.cc \
         http_message_sequence.hh \
-        backing_store.hh backing_store.cc
+        backing_store.hh backing_store.cc \
+	noop_store.hh noop_store.cc
