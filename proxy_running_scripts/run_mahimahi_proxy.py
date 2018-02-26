@@ -16,6 +16,8 @@ HTTP1_REPLAY_NO_PROXY_PATH = 'mm-http1-replay-no-proxy'
 PHONE_RECORD_PATH = 'mm-phone-webrecord'
 THIRD_PARTY_SPEEDUP_PROXY = 'mm-third-party-speedup-proxy'
 DELAYSHELL_WITH_PORT_FORWARDED = 'mm-delayshell-with-port-forwarded'
+PROXY_IN_REPLAYSHELL= 'mm-proxy-within-replay'
+
 NGHTTPX_PATH = 'nghttpx'
 NGHTTPX_PORT = 'nghttpx_port'
 NGHTTPX_KEY = 'nghttpx_key'
@@ -30,6 +32,8 @@ MM_PHONE_WEBRECORD = 'mm-phone-webrecord'
 MM_DELAYSHELL_WITH_PORT_FORWARDED = 'mm-delayshell-port-forwarded'
 MM_DELAY_WITH_NAMESERVER = 'mm-delay-with-nameserver'
 MM_THIRD_PARTY_SPEEDUP_PROXY = 'mm-serialized-phone-webrecord-using-vpn'
+MM_PROXY_WITHIN_REPLAYSHELL = 'mm-proxy-in-replay'
+
 NGHTTPX = 'nghttpx'
 APACHE = 'apache'
 PAGE = 'page'
@@ -47,7 +51,8 @@ CONFIG_FIELDS = [ BUILD_PREFIX, PROXY_REPLAY_PATH, NGHTTPX_PATH, NGHTTPX_PORT, \
                   NGHTTPX_KEY, NGHTTPX_CERT, BASE_RECORD_DIR, PHONE_RECORD_PATH, \
                   BASE_RESULT_DIR, DELAYSHELL_WITH_PORT_FORWARDED, THIRD_PARTY_SPEEDUP_PROXY, \
                   HTTP1_PROXY_REPLAY_PATH, HTTP1_REPLAY_NO_PROXY_PATH, OPENVPN_PORT, \
-                  DEPENDENCY_DIRECTORY_PATH, THIRD_PARTY_SPEEDUP_PREFETCH_DIR_PATH, START_TCPDUMP ]
+                  DEPENDENCY_DIRECTORY_PATH, THIRD_PARTY_SPEEDUP_PREFETCH_DIR_PATH, START_TCPDUMP, \
+                  PROXY_IN_REPLAYSHELL ]
 
 app = Flask(__name__)
 
@@ -103,9 +108,6 @@ def start_proxy():
 @app.route("/stop_proxy")
 def stop_proxy():
     processes = [ MM_PROXYREPLAY, MM_DELAY_WITH_NAMESERVER, NGHTTPX, OPENVPN ]
-    # processes = [ MM_PROXYREPLAY ]
-    # processes = [ OPENVPN ]
-    #processes = [ MM_DELAY_WITH_NAMESERVER, OPENVPN ]
     for process in processes:
         command = 'sudo pkill -sigint {0}'.format(process)
         subprocess.Popen(command, shell=True)
@@ -170,6 +172,57 @@ def stop_delay_replay_proxy():
     command = 'pkill {0}'.format(MM_DELAYSHELL_WITH_PORT_FORWARDED)
     subprocess.Popen(command, shell=True)
     stop_proxy()
+    return 'Proxy Stopped'
+
+
+@app.route("/start_proxy_within_replay")
+def start_proxy_within_replay():
+    page = escape_page(request.args[PAGE])
+    request_time = request.args[TIME]
+    path_to_recorded_page = os.path.join(proxy_config[BASE_RESULT_DIR], request_time, escape_page(page))
+    prefetch_resources_filename = os.path.join(proxy_config[THIRD_PARTY_SPEEDUP_PREFETCH_DIR_PATH], 'prefetch', page)
+    request_order_filename = os.path.join(proxy_config[THIRD_PARTY_SPEEDUP_PREFETCH_DIR_PATH], 'order', page)
+
+    # Remove the temp directory
+    rm_existing_temp = 'rm -f temp'
+    subprocess.call(rm_existing_temp, shell=True)
+
+    # Command: /mm-proxy-in-replay /home/vaspol/Research/MobileWebOptimization/page_load_setup/specific_page_records/1519427412.94/amazon.com_dp_B01J90MSDS nghttpx ../certs/key.pem ../certs/cert.pem 1194 ../../../third_party_accelerate/prefetch_resources/02_21/prefetch/amazon.com_dp_B01J90MSDS ../../../third_party_accelerate/prefetch_resources/02_21/order/amazon.com_dp_B01J90MSDS amazon.com_dp_B01J90MSDS
+    command = '{0} {1} {2} {3} {4} {5} {6} {7} {8}'.format(
+                                           proxy_config[BUILD_PREFIX] + proxy_config[PROXY_IN_REPLAYSHELL], \
+                                           path_to_recorded_page, \
+                                           proxy_config[BUILD_PREFIX] + proxy_config[NGHTTPX_PATH], \
+                                           proxy_config[BUILD_PREFIX] + proxy_config[NGHTTPX_KEY], \
+                                           proxy_config[BUILD_PREFIX] + proxy_config[NGHTTPX_CERT], \
+                                           1194, \
+                                           prefetch_resources_filename, \
+                                           request_order_filename, \
+                                           page)
+    print command
+    process = subprocess.Popen(command, shell=True)
+
+    # Start tcpdump, if necessary.
+    if proxy_config[START_TCPDUMP] == 'True':
+        start_tcpdump()
+    return 'Proxy Started'
+
+
+@app.route("/is_proxy_within_replay_running")
+def is_proxy_within_replay_running():
+    process_names = [ MM_PROXY_WITHIN_REPLAYSHELL, 'openvpn' ]
+    result = ''
+    for process_name in process_names:
+        result += check_process(process_name)
+    return result.strip()
+
+
+@app.route("/stop_proxy_within_replay")
+def stop_proxy_within_replay():
+    print 'Stopping recording'
+    processes = [ MM_PROXY_WITHIN_REPLAYSHELL, 'openvpn' ]
+    for process in processes:
+        command = 'sudo pkill {0}'.format(process)
+        subprocess.Popen(command.split())
     return 'Proxy Stopped'
 
 

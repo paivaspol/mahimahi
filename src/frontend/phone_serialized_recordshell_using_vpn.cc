@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
     outer_event_loop.add_child_process("recorder", [&]() {
       drop_privileges();
 
-      make_directory(directory);
+      // make_directory(directory);
 
       /* set up backing store to do nothing */
       NoopStore noop_store;
