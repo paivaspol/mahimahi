@@ -104,6 +104,7 @@ void SerializedHTTPProxy::serialized_loop(SocketType &server,
         bool is_high_priority = prefetch_resources_.find(escaped_url) ==
                                     prefetch_resources_.end() ||
                                 escaped_url == page_url_;
+
         serializer_.register_request(url, is_high_priority);
         auto start = chrono::system_clock::now();
         auto start_epoch = start.time_since_epoch();

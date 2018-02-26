@@ -85,6 +85,7 @@ void Serializer::reprioritize(const string &current_url) {
 
     // Need to reprioritize this resource. Move it from the low priority map to
     // the high priority queue.
+    cout << "Reprioritizing: " << low_pri_url << endl;
     high_priorities_.push(low_pri_url);
     low_priorities_.erase(low_pri_req_id);
   }
