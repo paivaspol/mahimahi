@@ -42,7 +42,8 @@ SerializedHTTPProxy::SerializedHTTPProxy(const Address &listener_addr,
 template <class SocketType>
 void SerializedHTTPProxy::serialized_loop(SocketType &server,
                                           SocketType &client,
-                                          HTTPBackingStore &backing_store) {
+                                          HTTPBackingStore &backing_store,
+                                          bool is_tls) {
   Poller poller;
 
   HTTPRequestParser request_parser;
@@ -66,6 +67,21 @@ void SerializedHTTPProxy::serialized_loop(SocketType &server,
                                    [&]() {
                                      string buffer = client.read();
                                      request_parser.parse(buffer);
+                                     SecureSocket &tls_server =
+                                         static_cast<SecureSocket &>(server);
+                                     if (is_tls && !tls_server.connected()) {
+                                       HTTPRequest front =
+                                           request_parser.front();
+                                       cout << "front: " << front << endl;
+                                       // string hostname =
+                                       // request_parser.get_current_message_hostname();
+                                       // cout << "current message hostname: "
+                                       // << hostname << endl;
+                                       if (!hostname.empty()) {
+                                         tls_server.set_tls_hostname(hostname);
+                                       }
+                                       tls_server.connect();
+                                     }
                                      return ResultType::Continue;
                                    },
                                    [&]() { return not server.eof(); }));
@@ -147,19 +163,19 @@ void SerializedHTTPProxy::handle_tcp(HTTPBackingStore &backing_store) {
           server.connect(server_addr);
 
           if (server_addr.port() != 443) { /* normal HTTP */
-            return serialized_loop(server, client, backing_store);
+            return serialized_loop(server, client, backing_store, false);
           }
 
           /* handle TLS */
           SecureSocket tls_server(
               client_context_.new_secure_socket(move(server)));
-          tls_server.connect();
+          // tls_server.connect();
 
           SecureSocket tls_client(
               server_context_.new_secure_socket(move(client)));
           tls_client.accept();
 
-          serialized_loop(tls_server, tls_client, backing_store);
+          serialized_loop(tls_server, tls_client, backing_store, true);
         } catch (const exception &e) {
           print_exception(e);
         }

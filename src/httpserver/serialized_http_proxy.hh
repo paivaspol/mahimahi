@@ -28,7 +28,7 @@ private:
 
   template <class SocketType>
   void serialized_loop(SocketType &server, SocketType &client,
-                       HTTPBackingStore &backing_store);
+                       HTTPBackingStore &backing_store, bool is_tls);
 
   void handle_tcp(HTTPBackingStore &backing_store) override;
 

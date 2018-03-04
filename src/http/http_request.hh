@@ -21,6 +21,8 @@ public:
 
   std::string get_url(void) const;
 
+  std::string get_hostname(void) const;
+
   using HTTPMessage::HTTPMessage;
 };
 

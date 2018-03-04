@@ -42,17 +42,7 @@ bool HTTPRequest::is_head(void) const {
 }
 
 string HTTPRequest::get_url(void) const {
-  string host = "";
-  for (auto it = headers_.begin(); it != headers_.end(); it++) {
-    auto header = *it;
-    auto key = header.key();
-    auto value = header.value();
-    if (key == "Host") {
-      host = value;
-      break;
-    }
-  }
-
+  string host = get_hostname();
   // Cannot find the host of this request.
   if (host.empty()) {
     return "";
@@ -65,4 +55,16 @@ string HTTPRequest::get_url(void) const {
     tokens.push_back(item);
   }
   return host + tokens[1];
+}
+
+string HTTPRequest::get_hostname(void) const {
+  for (auto it = headers_.begin(); it != headers_.end(); it++) {
+    auto header = *it;
+    auto key = header.key();
+    auto value = header.value();
+    if (key == "Host") {
+      return value;
+    }
+  }
+  return "";
 }

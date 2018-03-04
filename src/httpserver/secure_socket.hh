@@ -5,43 +5,48 @@
 #ifndef SECURE_SOCKET_HH
 #define SECURE_SOCKET_HH
 
-#include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/ssl.h>
 
 #include "socket.hh"
 
 enum SSL_MODE { CLIENT, SERVER };
 
-class SecureSocket : public TCPSocket
-{
-    friend class SSLContext;
+class SecureSocket : public TCPSocket {
+  friend class SSLContext;
 
 private:
-    struct SSL_deleter { void operator()( SSL * x ) const { SSL_free( x ); } };
-    typedef std::unique_ptr<SSL, SSL_deleter> SSL_handle;
-    SSL_handle ssl_;
+  struct SSL_deleter {
+    void operator()(SSL *x) const { SSL_free(x); }
+  };
+  typedef std::unique_ptr<SSL, SSL_deleter> SSL_handle;
+  SSL_handle ssl_;
+  bool connected_;
 
-    SecureSocket( TCPSocket && sock, SSL * ssl );
+  SecureSocket(TCPSocket &&sock, SSL *ssl);
 
 public:
-    void connect( void );
-    void accept( void );
+  void connect(void);
+  void accept(void);
+  void set_tls_hostname(const std::string &hostname);
+  bool connected(void) { return connected_; };
 
-    std::string read( void );
-    void write( const std::string & message );
+  std::string read(void);
+  void write(const std::string &message);
 };
 
-class SSLContext
-{
+class SSLContext {
 private:
-    struct CTX_deleter { void operator()( SSL_CTX * x ) const { SSL_CTX_free( x ); } };
-    typedef std::unique_ptr<SSL_CTX, CTX_deleter> CTX_handle;
-    CTX_handle ctx_;
+  struct CTX_deleter {
+    void operator()(SSL_CTX *x) const { SSL_CTX_free(x); }
+  };
+  typedef std::unique_ptr<SSL_CTX, CTX_deleter> CTX_handle;
+  CTX_handle ctx_;
 
 public:
-    SSLContext( const SSL_MODE type );
+  SSLContext(const SSL_MODE type);
 
-    SecureSocket new_secure_socket( TCPSocket && sock );
+  SecureSocket new_secure_socket(TCPSocket &&sock);
 };
 
 #endif
