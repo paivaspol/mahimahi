@@ -20,7 +20,6 @@
 #include "poller.hh"
 #include "secure_socket.hh"
 #include "serialized_http_proxy.hh"
-#include "serializer.hh"
 #include "socket.hh"
 #include "system_runner.hh"
 #include "temp_file.hh"
@@ -33,10 +32,13 @@ SerializedHTTPProxy::SerializedHTTPProxy(const Address &listener_addr,
                                          const string &prefetch_urls_filename,
                                          const string &request_order_filename,
                                          const string &page_url)
-    : HTTPProxy(listener_addr), serializer_(request_order_filename),
-      prefetch_resources_(), escaped_urls_(), prefetch_resources_order_(),
-      page_url_(page_url) {
+    : HTTPProxy(listener_addr), prefetch_resources_(), escaped_urls_(),
+      prefetch_resources_order_(), page_url_(page_url), m_(), cv_(),
+      high_priorities_(), request_order_(), access_guard_(),
+      new_low_priority_req_id_(0), next_low_priority_req_(0),
+      low_priorities_() {
   get_prefetch_resources(prefetch_resources_, prefetch_urls_filename);
+  get_request_order(request_order_, request_order_filename);
 }
 
 template <class SocketType>
@@ -105,7 +107,35 @@ void SerializedHTTPProxy::serialized_loop(SocketType &server,
                                     prefetch_resources_.end() ||
                                 escaped_url == page_url_;
 
-        serializer_.register_request(url, is_high_priority);
+        // Logic before when getting the request.
+        std::unique_lock<std::mutex> access_lock(access_guard_);
+        int req_id = new_low_priority_req_id_;
+        new_low_priority_req_id_++;
+        if (is_high_priority) {
+          // This is not a prefetch resource, thus, a high priority resource.
+          high_priorities_.push(url);
+        } else {
+          low_priorities_[req_id] = url;
+        }
+        reprioritize(url);
+        access_lock.unlock();
+
+        // Wake up if the front of the high priority queue is us or
+        // if nothing is left in the high priority queue and we are the next low
+        // priority
+        std::unique_lock<std::mutex> lk(m_);
+        cv_.wait(lk, [&] {
+          return high_priorities_.front() == url ||
+                 (high_priorities_.empty() && next_low_priority_req_ == req_id);
+        });
+
+        if (high_priorities_.front() == url) {
+          high_priorities_.pop();
+        } else if (next_low_priority_req_ == req_id) {
+          low_priorities_.erase(req_id);
+        }
+        next_low_priority_req_++;
+
         auto start = chrono::system_clock::now();
         auto start_epoch = start.time_since_epoch();
         auto start_seconds =
@@ -113,7 +143,6 @@ void SerializedHTTPProxy::serialized_loop(SocketType &server,
         cout << "URL: " << url << " Start: " << to_string(start_seconds.count())
              << endl;
         client.write(response_parser.front().str());
-        serializer_.send_request_complete();
         auto end = chrono::system_clock::now();
         auto end_epoch = end.time_since_epoch();
         auto end_seconds =
@@ -123,6 +152,11 @@ void SerializedHTTPProxy::serialized_loop(SocketType &server,
 
         backing_store.save(response_parser.front(), server_addr);
         response_parser.pop();
+
+        // We are done with this response, unlock the lock and notify the
+        // waiting threads.
+        lk.unlock();
+        cv_.notify_all();
         return ResultType::Continue;
       },
       [&]() { return not response_parser.empty(); }));
@@ -218,4 +252,48 @@ string SerializedHTTPProxy::generate_preload_header_str() {
   }
   prefetch_string = prefetch_string.substr(0, prefetch_string.length() - 1);
   return prefetch_string;
+}
+
+// void SerializedHTTPProxy::register_request(const std::string &url,
+//                                            bool is_high_priority) {}
+//
+// void SerializedHTTPProxy::send_request_complete() {}
+
+void SerializedHTTPProxy::get_request_order(map<string, int> &request_order,
+                                            string request_order_filename) {
+  ifstream prefetch_resources_file(request_order_filename);
+  string line;
+  int order = 0;
+  while (getline(prefetch_resources_file, line)) {
+    request_order[remove_scheme(line)] = order;
+    order++;
+  }
+}
+
+void SerializedHTTPProxy::reprioritize(const string &current_url) {
+  // Get the current url request order based on a previous request order.
+  string removed_scheme = remove_scheme(current_url);
+  int url_request_order = request_order_[removed_scheme];
+  for (auto it = low_priorities_.begin(); it != low_priorities_.end(); it++) {
+    int low_pri_req_id = it->first;
+    string low_pri_url = it->second;
+    auto find_request_order_it = request_order_.find(low_pri_url);
+    if (find_request_order_it == request_order_.end()) {
+      // We have no idea about the request ordering of this resource.
+      // Just leave the resource as low priority as it is now.
+      continue;
+    }
+    int low_pri_request_order = find_request_order_it->second;
+    if (low_pri_request_order > url_request_order) {
+      // This resource is not really needed yet based on a prior request
+      // ordering. Leave it low priority as is.
+      continue;
+    }
+
+    // Need to reprioritize this resource. Move it from the low priority map to
+    // the high priority queue.
+    cout << "Reprioritizing: " << low_pri_url << endl;
+    high_priorities_.push(low_pri_url);
+    low_priorities_.erase(low_pri_req_id);
+  }
 }

@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
             //   cout << *i << ' ';
             // }
             // cout << endl;
-            // vector<string> command = { "bash" };
+            // vector<string> command = {"bash"};
 
             /* forward all packets from tun0 (OpenVPN interface) to the ingress
              * interface */
