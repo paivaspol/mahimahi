@@ -17,6 +17,7 @@
 #include "interfaces.hh"
 #include "nat.hh"
 #include "netdevice.hh"
+#include "noop_store.hh"
 #include "socketpair.hh"
 #include "util.hh"
 #include "vpn.hh"
@@ -31,8 +32,9 @@ int main(int argc, char *argv[]) {
 
     check_requirements(argc, argv);
 
-    if (argc < 2) {
-      throw runtime_error("Usage: " + string(argv[0]) + " directory");
+    if (argc < 3) {
+      throw runtime_error("Usage: " + string(argv[0]) +
+                          " directory storage_type");
     }
 
     /* Make sure directory ends with '/' so we can prepend directory to file
@@ -171,11 +173,18 @@ int main(int argc, char *argv[]) {
       make_directory(directory);
 
       /* set up backing store to save to disk */
-      HTTPDiskStore disk_backing_store(directory);
-
       EventLoop recordr_event_loop;
       dns_outside.register_handlers(recordr_event_loop);
-      http_proxy.register_handlers(recordr_event_loop, disk_backing_store);
+
+      string storage_type = argv[2];
+      if (storage_type == "disk") {
+        HTTPDiskStore disk_backing_store(directory);
+        http_proxy.register_handlers(recordr_event_loop, disk_backing_store);
+      } else if (storage_type == "noop") {
+        NoopStore noop_store;
+        http_proxy.register_handlers(recordr_event_loop, noop_store);
+      }
+
       return recordr_event_loop.loop();
     });
 

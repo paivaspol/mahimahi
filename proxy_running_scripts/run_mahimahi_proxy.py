@@ -210,6 +210,7 @@ def stop_third_party_speedup_proxy():
 def start_recording():
     page = request.args[PAGE]
     request_time = request.args[TIME]
+    storage = request.args['storage']
     print 'start recording of {0} at {1}'.format(page, request_time)
     mkdir_cmd = 'mkdir -p {0}'.format(os.path.join(proxy_config[BASE_RECORD_DIR], request_time))
     subprocess.call(mkdir_cmd, shell=True)
@@ -217,7 +218,7 @@ def start_recording():
     if os.path.exists(record_path):
         rm_cmd = 'rm -r {0}'.format(record_path)
         subprocess.call(rm_cmd, shell=True)
-    command = '{0} {1}'.format(proxy_config[BUILD_PREFIX] + proxy_config[PHONE_RECORD_PATH], record_path)
+    command = '{0} {1}'.format(proxy_config[BUILD_PREFIX] + proxy_config[PHONE_RECORD_PATH], record_path, storage)
     process = subprocess.Popen(command, shell=True)
 
     # Start tcpdump, if necessary.
