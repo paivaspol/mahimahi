@@ -1,5 +1,6 @@
 /* -*-mode:c++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 
+#include <iostream>
 #include <sstream>
 #include <vector>
 
@@ -8,6 +9,17 @@
 #include "http_request.hh"
 
 using namespace std;
+
+void HTTPRequest::set_request_id(int request_id) {
+  if (request_id_ == -1) {
+    cout << "\t[SETTING REQ_ID] request_id: " << to_string(request_id) << endl;
+    request_id_ = request_id;
+    cout << "\t[AFTER SETTING REQ_ID] request_id: " << to_string(request_id)
+         << endl;
+  } else {
+    cout << "\tTHIS SHOULD NOT HAPPEN" << endl;
+  }
+}
 
 void HTTPRequest::calculate_expected_body_size(void) {
   assert(state_ == BODY_PENDING);

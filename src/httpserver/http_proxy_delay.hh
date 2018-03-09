@@ -3,40 +3,39 @@
 #ifndef HTTP_PROXY_HH
 #define HTTP_PROXY_HH
 
+#include <map>
 #include <string>
 
-#include "socket.hh"
-#include "secure_socket.hh"
 #include "http_response.hh"
+#include "secure_socket.hh"
+#include "socket.hh"
 
 class EventLoop;
 class Poller;
 class HTTPRequestParser;
 class HTTPResponseParser;
 
-class HTTPProxyDelay
-{
+class HTTPProxyDelay {
 private:
-    TCPSocket listener_socket_;
+  TCPSocket listener_socket_;
 
-    template <class SocketType>
-    void loop( SocketType & server, SocketType & client );
+  template <class SocketType> void loop(SocketType &server, SocketType &client);
 
-    SSLContext server_context_, client_context_;
+  SSLContext server_context_, client_context_;
 
-    map<string, uint32_t> delay_;
+  map<string, uint32_t> delay_;
 
 public:
-    HTTPProxy( const Address & listener_addr );
+  HTTPProxy(const Address &listener_addr);
 
-    TCPSocket & tcp_listener( void ) { return listener_socket_; }
+  TCPSocket &tcp_listener(void) { return listener_socket_; }
 
-    void handle_tcp();
+  void handle_tcp();
 
-    /* register this HTTPProxy's TCP listener socket to handle events with
-       the given event_loop, saving request-response pairs to the given
-       backing_store (which is captured and must continue to persist) */
-    void register_handlers( EventLoop & event_loop );
+  /* register this HTTPProxy's TCP listener socket to handle events with
+     the given event_loop, saving request-response pairs to the given
+     backing_store (which is captured and must continue to persist) */
+  void register_handlers(EventLoop &event_loop);
 };
 
 #endif /* HTTP_PROXY_HH */

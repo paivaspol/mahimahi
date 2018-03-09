@@ -16,7 +16,14 @@ private:
   /* connection closed while body was pending */
   bool eof_in_body(void) const override;
 
+  /* Represents the request id. */
+  int request_id_ = -1;
+
 public:
+  void set_request_id(int request_id);
+
+  int get_request_id(void) { return request_id_; }
+
   bool is_head(void) const;
 
   std::string get_url(void) const;
