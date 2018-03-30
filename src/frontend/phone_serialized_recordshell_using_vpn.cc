@@ -122,6 +122,7 @@ int main(int argc, char *argv[]) {
             vector<string> command = vpn.start_command();
 
             // For debugging purposes.
+            // vector<string> vpn_command = vpn.start_command();
             // for (auto i = vpn_command.begin(); i != vpn_command.end(); i++) {
             //   cout << *i << ' ';
             // }

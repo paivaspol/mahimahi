@@ -218,7 +218,7 @@ def start_recording():
     if os.path.exists(record_path):
         rm_cmd = 'rm -r {0}'.format(record_path)
         subprocess.call(rm_cmd, shell=True)
-    command = '{0} {1}'.format(proxy_config[BUILD_PREFIX] + proxy_config[PHONE_RECORD_PATH], record_path, storage)
+    command = '{0} {1} {2}'.format(proxy_config[BUILD_PREFIX] + proxy_config[PHONE_RECORD_PATH], record_path, storage)
     process = subprocess.Popen(command, shell=True)
 
     # Start tcpdump, if necessary.
