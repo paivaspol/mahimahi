@@ -47,7 +47,7 @@ mm_phone_webrecord_using_vpn_LDADD = -lrt ../httpserver/libhttpserver.a ../http/
 mm_phone_webrecord_using_vpn_LDFLAGS = -pthread
 
 bin_PROGRAMS += mm-serialized-phone-webrecord-using-vpn
-mm_serialized_phone_webrecord_using_vpn_SOURCES = phone_serialized_recordshell_using_vpn.cc 
+mm_serialized_phone_webrecord_using_vpn_SOURCES = phone_serialized_recordshell_using_vpn.cc squid_proxy.hh squid_proxy.cc h2_forward_proxy.hh h2_forward_proxy.cc
 mm_serialized_phone_webrecord_using_vpn_LDADD = -lrt ../httpserver/libhttpserver.a ../http/libhttp.a ../protobufs/libhttprecordprotos.a ../util/libutil.a $(protobuf_LIBS) $(libcrypto_LIBS) $(libssl_LIBS)
 mm_serialized_phone_webrecord_using_vpn_LDFLAGS = -pthread
 

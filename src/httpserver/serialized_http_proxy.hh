@@ -2,11 +2,9 @@
 #define SERIALIZED_HTTP_PROXY_HH
 
 #include <condition_variable>
-#include <fstream>
 #include <map>
 #include <mutex>
 #include <queue>
-#include <set>
 #include <vector>
 
 #include "http_proxy.hh"
@@ -27,13 +25,6 @@ private:
 
   std::string page_url_;
 
-  int last_request_order_seen_;
-
-  std::chrono::high_resolution_clock::time_point prev_resp_t_;
-
-  std::set<int> seen_high_pri_resp_;
-  std::set<int> seen_low_pri_resp_;
-
   template <class SocketType>
   void serialized_loop(SocketType &server, SocketType &client,
                        HTTPBackingStore &backing_store);
@@ -51,21 +42,25 @@ private:
   std::mutex m_;
   std::condition_variable cv_;
 
+  std::queue<std::string> high_priorities_;
+
   std::map<std::string, int> request_order_;
-  std::map<std::string, int> url_to_req_id_;
 
   // Keeps track of the request ID of the next low priority request.
   std::mutex access_guard_;
-  int next_req_id_;
+  int new_low_priority_req_id_;
+  int next_low_priority_req_;
   std::map<int, std::string> low_priorities_;
 
   void get_request_order(std::map<std::string, int> &request_order,
                          std::string request_order_filename);
 
   void reprioritize(const std::string &current_url);
-  void clear_queues(void);
-  long cur_time_since_epoch_ms(void);
-  void print_seen_responses(void);
+  // // Registers the request and blocks until this URL is next in the queue.
+  // void register_request(const std::string &url, bool is_high_priority);
+
+  // // Finishes the request and proceed to the next request.
+  // void send_request_complete();
 
 public:
   SerializedHTTPProxy(const Address &listener_addr,

@@ -11,12 +11,15 @@
 #include "event_loop.hh"
 #include "exception.hh"
 #include "forwarder.hh"
+#include "h2_forward_proxy.hh"
 #include "interfaces.hh"
 #include "nat.hh"
 #include "netdevice.hh"
 #include "noop_store.hh"
+#include "pac_file.hh"
 #include "serialized_http_proxy.hh"
 #include "socketpair.hh"
+#include "squid_proxy.hh"
 #include "util.hh"
 #include "vpn.hh"
 
@@ -74,6 +77,23 @@ int main(int argc, char *argv[]) {
     string escaped_page_url = escape_page_url(argv[4]);
     SerializedHTTPProxy http_proxy(egress_addr, argv[2], argv[3],
                                    escaped_page_url);
+
+    // Address squid_address("0.0.0.0", 3128);
+    // SquidProxy squid_proxy(squid_address, true);
+
+    // Address forward_proxy_address("0.0.0.0", 8443);
+    // H2ForwardProxy h2_forward_proxy(
+    //     forward_proxy_address, squid_address,
+    //     "/home/vaspol/Research/MobileWebOptimization/page_load_setup/build/bin/"
+    //     "nghttpx",
+    //     "/home/vaspol/Research/MobileWebOptimization/page_load_setup/build/"
+    //     "certs/reverse_proxy_key.pem",
+    //     "/home/vaspol/Research/MobileWebOptimization/page_load_setup/build/"
+    //     "certs/reverse_proxy_cert.pem",
+    //     "aaa");
+
+    // PacFile pac_file("/home/vaspol/Sites/config_testing.pac");
+    // pac_file.WriteSingleSecureProxy(Address(egress_addr.ip(), 8443));
 
     /* set up dnat */
     DNAT dnat(http_proxy.tcp_listener().local_address(), egress_name);
