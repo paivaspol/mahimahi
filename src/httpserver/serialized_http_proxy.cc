@@ -63,28 +63,26 @@ void SerializedHTTPProxy::serialized_loop(SocketType &server,
                                    [&]() { return not client.eof(); }));
 
   /* requests from client go to request parser */
-  poller.add_action(Poller::Action(client, Direction::In,
-                                   [&]() {
-                                     string buffer = client.read();
-                                     request_parser.parse(buffer);
-                                     SecureSocket &tls_server =
-                                         static_cast<SecureSocket &>(server);
-                                     if (is_tls && !tls_server.connected()) {
-                                       HTTPRequest front =
-                                           request_parser.front();
-                                       cout << "front: " << front << endl;
-                                       // string hostname =
-                                       // request_parser.get_current_message_hostname();
-                                       // cout << "current message hostname: "
-                                       // << hostname << endl;
-                                       if (!hostname.empty()) {
-                                         tls_server.set_tls_hostname(hostname);
-                                       }
-                                       tls_server.connect();
-                                     }
-                                     return ResultType::Continue;
-                                   },
-                                   [&]() { return not server.eof(); }));
+  poller.add_action(Poller::Action(
+      client, Direction::In,
+      [&]() {
+        string buffer = client.read();
+        request_parser.parse(buffer);
+        SecureSocket &tls_server = static_cast<SecureSocket &>(server);
+        if (is_tls && !tls_server.connected()) {
+          HTTPRequest front = request_parser.front();
+          string hostname = request_parser.get_current_message_hostname();
+          // cout << "current message hostname: "
+          // << hostname << endl;
+          if (!hostname.empty()) {
+            // tls_server.set_tls_hostname(hostname);
+            tls_server.set_tls_hostname("invocation.combotag.com");
+          }
+          tls_server.connect();
+        }
+        return ResultType::Continue;
+      },
+      [&]() { return not server.eof(); }));
 
   /* completed requests from client are serialized and sent to server */
   poller.add_action(Poller::Action(

@@ -74,11 +74,13 @@ SSL_CTX *initialize_new_context(const SSL_MODE type) {
 SSLContext::SSLContext(const SSL_MODE type)
     : ctx_(initialize_new_context(type)) {
   if (type == SERVER) {
-    if (not SSL_CTX_use_certificate_ASN1(ctx_.get(), 678, certificate)) {
+    // if (not SSL_CTX_use_certificate_ASN1(ctx_.get(), 678, certificate)) {
+    if (not SSL_CTX_use_certificate_ASN1(ctx_.get(), 1119, certificate)) {
       throw ssl_error("SSL_CTX_use_certificate_ASN1");
     }
 
-    if (not SSL_CTX_use_RSAPrivateKey_ASN1(ctx_.get(), private_key, 1191)) {
+    // if (not SSL_CTX_use_RSAPrivateKey_ASN1(ctx_.get(), private_key, 1191)) {
+    if (not SSL_CTX_use_RSAPrivateKey_ASN1(ctx_.get(), private_key, 1192)) {
       throw ssl_error("SSL_CTX_use_RSAPrivateKey_ASN1");
     }
 
