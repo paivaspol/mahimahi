@@ -137,8 +137,10 @@ string strip_www(const string &url) {
 unsigned int match_url(const string &saved_request_url,
                        const string &request_url) {
   /* must match first line up to "?" at least */
-  // ofstream myfile;
-  // myfile.open("match_url.txt", ios::app);
+  ofstream myfile;
+  myfile.open("match_url.txt", ios::app);
+  myfile << "returned from strip query mismatch: " << request_url
+         << " saved: " << saved_request_url << endl;
   // if (request_url.find("5o3Rb.5pjsDBCdfFtzlQ8w") != string::npos) {
   //   myfile << "striping url" << endl;
   // }
@@ -168,7 +170,7 @@ unsigned int match_url(const string &saved_request_url,
   // if (request_url.find("5o3Rb.5pjsDBCdfFtzlQ8w") != string::npos) {
   //   myfile << "score: " << max_match << endl;
   // }
-  // myfile.close();
+  myfile.close();
   return max_match;
 }
 
@@ -216,7 +218,7 @@ unsigned int match_score(const MahimahiProtobufs::RequestResponse &saved_record,
       strip_hostname(extract_url_from_request_line(request_line),
                      extract_url_from_request_line(saved_request.first_line()));
   string saved_request_url =
-      extract_url_from_request_line(saved_request.first_line());
+      strip_hostname(extract_url_from_request_line(saved_request.first_line()));
   // myfile.close();
   return match_url(saved_request_url, request_url);
 }
