@@ -150,6 +150,7 @@ unsigned int match_url(const string &saved_request_url,
     //   myfile << "returned from strip query mismatch: " << request_url << "
     //   saved: " << saved_request_url << endl;
     // }
+    myfile << "\there" << endl;
     return 0;
   }
 
@@ -168,7 +169,7 @@ unsigned int match_url(const string &saved_request_url,
     }
   }
   // if (request_url.find("5o3Rb.5pjsDBCdfFtzlQ8w") != string::npos) {
-  //   myfile << "score: " << max_match << endl;
+  myfile << "score: " << max_match << endl;
   // }
   myfile.close();
   return max_match;
@@ -218,7 +219,8 @@ unsigned int match_score(const MahimahiProtobufs::RequestResponse &saved_record,
       strip_hostname(extract_url_from_request_line(request_line),
                      extract_url_from_request_line(saved_request.first_line()));
   string saved_request_url =
-      strip_hostname(extract_url_from_request_line(saved_request.first_line()));
+      strip_hostname(extract_url_from_request_line(saved_request.first_line()),
+                     extract_url_from_request_line(saved_request.first_line()));
   // myfile.close();
   return match_url(saved_request_url, request_url);
 }
@@ -409,7 +411,7 @@ int main(void) {
       }
     }
 
-    best_score = check_redirect(best_match, best_score);
+    // best_score = check_redirect(best_match, best_score);
 
     if (best_score > 0) { /* give client the best match */
       HTTPRequest request(best_match.request());

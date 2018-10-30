@@ -29,6 +29,9 @@ void DelayQueue::read_packet(const string &contents) {
     // we add all delay on uplink because dest ip
     // on downlink is client ip (note that this shouldn't matter)
     RTT_delay = (it->second);
+    // cout << "Imposing delay: " << it->first << " of: " <<
+    // to_string(RTT_delay)
+    // << "ms" << endl;
   }
   packet_queue_.emplace(timestamp() + delay_ms_ + RTT_delay, contents);
 }
