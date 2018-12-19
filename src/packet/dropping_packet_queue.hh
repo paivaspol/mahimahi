@@ -7,6 +7,7 @@
 #include <cassert>
 
 #include "abstract_packet_queue.hh"
+#include "exception.hh"
 
 class DroppingPacketQueue : public AbstractPacketQueue
 {
@@ -20,9 +21,6 @@ private:
 protected:
     const unsigned int packet_limit_;
     const unsigned int byte_limit_;
-
-    unsigned int size_bytes( void ) const;
-    unsigned int size_packets( void ) const;
 
     /* put a packet on the back of the queue */
     void accept( QueuedPacket && p );
@@ -42,6 +40,11 @@ public:
     bool empty( void ) const override;
 
     std::string to_string( void ) const override;
+
+    static unsigned int get_arg( const std::string & args, const std::string & name );
+
+    unsigned int size_bytes( void ) const override;
+    unsigned int size_packets( void ) const override;
 };
 
 #endif /* DROPPING_PACKET_QUEUE_HH */ 

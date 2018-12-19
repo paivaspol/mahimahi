@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.68])
-AC_INIT([mahimahi], [0.92], [mahimahi@mit.edu])
+AC_INIT([mahimahi], [0.98], [mahimahi@mit.edu])
 AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_SRCDIR([src/frontend/delayshell.cc])
 AC_CONFIG_HEADERS([config.h])
@@ -121,6 +121,7 @@ AC_DEFINE_UNQUOTED([MOD_DEEPCGI], ["${prefix}/lib/${DEB_HOST_MULTIARCH}/libmod_d
 PKG_CHECK_MODULES([protobuf], [protobuf])
 PKG_CHECK_MODULES([libssl], [libcrypto libssl])
 PKG_CHECK_MODULES([libapr1], [apr-1])
+PKG_CHECK_MODULES([XCB], [xcb])
 PKG_CHECK_MODULES([XCBPRESENT], [xcb-present])
 PKG_CHECK_MODULES([PANGOCAIRO], [pangocairo])
 
