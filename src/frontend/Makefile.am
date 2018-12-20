@@ -72,14 +72,9 @@ mm_proxyreplay_LDADD = -lrt ../util/libutil.a ../http/libhttp.a ../protobufs/lib
 mm_proxyreplay_LDFLAGS = -pthread
 
 bin_PROGRAMS += mm-http1-proxyreplay
-mm_http1_proxyreplay_SOURCES = replay_http_one_shell.cc web_server.hh web_server.cc reverse_proxy.cc
+mm_http1_proxyreplay_SOURCES = replay_http_one_shell.cc web_server.hh web_server.cc
 mm_http1_proxyreplay_LDADD = -lrt ../util/libutil.a ../http/libhttp.a ../protobufs/libhttprecordprotos.a $(protobuf_LIBS)
 mm_http1_proxyreplay_LDFLAGS = -pthread
-
-bin_PROGRAMS += mm-http1-proxyreplay-no-proxy
-mm_http1_proxyreplay_no_proxy_SOURCES = replay_http_one_shell_without_proxy.cc web_server.hh web_server.cc
-mm_http1_proxyreplay_no_proxy_LDADD = -lrt ../util/libutil.a ../http/libhttp.a ../protobufs/libhttprecordprotos.a $(protobuf_LIBS)
-mm_http1_proxyreplay_no_proxy_LDFLAGS = -pthread
 
 bin_PROGRAMS += mm-per-packet-delay-replay
 mm_per_packet_delay_replay_SOURCES = replay_nghttp2_shell.cc web_server.hh web_server.cc reverse_proxy.cc squid_proxy.hh squid_proxy.cc
@@ -112,8 +107,6 @@ install-exec-hook:
 	chmod u+s $(DESTDIR)$(bindir)/mm-proxyreplay
 	chown root $(DESTDIR)$(bindir)/mm-http1-proxyreplay
 	chmod u+s $(DESTDIR)$(bindir)/mm-http1-proxyreplay
-	chown root $(DESTDIR)$(bindir)/mm-http1-proxyreplay-no-proxy
-	chmod u+s $(DESTDIR)$(bindir)/mm-http1-proxyreplay-no-proxy
 	chown root $(DESTDIR)$(bindir)/mm-delayshell-port-forwarded
 	chmod u+s $(DESTDIR)$(bindir)/mm-delayshell-port-forwarded
 	chown root $(DESTDIR)$(bindir)/mm-phone-webrecord
