@@ -36,6 +36,7 @@ void write_config_file(TempFile &config_file, const Address &addr,
   config_file.write("WorkingDir " + working_directory + "\n");
   config_file.write("RecordingDir " + record_path + "\n");
   config_file.write("LoadingPage " + page + "\n");
+  config_file.write("AllowEncodedSlashes NoDecode\n");
 
   /* add pid file, log files, user/group name, and listen line to config file
    * and run apache */
