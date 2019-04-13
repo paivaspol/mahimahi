@@ -50,14 +50,14 @@ int main(int argc, char *argv[]) {
 
     check_requirements(argc, argv);
 
-    if (argc < 8) {
+    if (argc < 3) {
       throw runtime_error("Usage: " + string(argv[0]) +
-                          " directory vpn_port mode path_to_dependency_file");
+                          " directory mode");
     }
 
     /* clean directory name */
     string directory = argv[1];
-    string mode = argv[3];
+    string mode = argv[2];
 
     if (directory.empty()) {
       throw runtime_error(string(argv[0]) +
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
     assign_address(egress_name, egress_addr, ingress_addr);
 
     /* set up DNAT between eth0 to ingress address. */
-    int vpn_port = atoi(argv[2]);
+    int vpn_port = 1194;
     DNATWithPostrouting dnat(Address(ingress_addr.ip(), vpn_port), "udp",
                              vpn_port);
 

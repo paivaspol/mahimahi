@@ -52,8 +52,8 @@ int main( int argc, char *argv[] )
 
         check_requirements( argc, argv );
 
-        if ( argc < 8 ) {
-            throw runtime_error( "Usage: " + string( argv[ 0 ] ) + " directory nghttpx_path nghttpx_port nghttpx_key nghttpx_cert vpn_port mode path_to_dependency_file" );
+        if ( argc < 3 ) {
+            throw runtime_error( "Usage: " + string( argv[ 0 ] ) + " directory mode " );
         }
 
         /* clean directory name */
@@ -62,11 +62,6 @@ int main( int argc, char *argv[] )
         if ( directory.empty() ) {
             throw runtime_error( string( argv[ 0 ] ) + ": directory name must be non-empty" );
         }
-
-        /* Get the application variables. */
-        string nghttpx_path = string(argv[ 2 ]);
-        string nghttpx_key_path = string(argv[ 4 ]);
-        string nghttpx_cert_path = string(argv[ 5 ]);
 
         /* make sure directory ends with '/' so we can prepend directory to file name for storage */
         if ( directory.back() != '/' ) {
@@ -92,7 +87,7 @@ int main( int argc, char *argv[] )
         assign_address( egress_name, egress_addr, ingress_addr );
 
         /* set up DNAT between eth0 to ingress address. */
-        int vpn_port = atoi(argv[6]);
+        int vpn_port = 1194;
         DNATWithPostrouting dnat( Address(ingress_addr.ip(), vpn_port), "udp", vpn_port );
 
         /* set up NAT between egress and eth0 */
@@ -199,18 +194,10 @@ int main( int argc, char *argv[] )
                   interface_counter++;
               }
 
-              string path_to_dependency_file = argv[8];
-              cout << "Path to dependency file: " << path_to_dependency_file << endl;
-
-              string escaped_page = argv[9];
-
               /* set up web servers */
               vector< WebServer > servers;
               for ( const auto ip_port : unique_ip_and_port ) {
-                if (path_to_dependency_file == "None") {
                   servers.emplace_back( ip_port, working_directory, directory, escaped_page );
-                } else {
-                  servers.emplace_back( ip_port, working_directory, directory, escaped_page, path_to_dependency_file );
                 }
               }
 
@@ -246,7 +233,7 @@ int main( int argc, char *argv[] )
               /* start dnsmasq */
               event_loop.add_child_process( start_dnsmasq( dnsmasq_args ) );
 
-              string mode = argv[7];
+              string mode = argv[2];
 
               cout << "mode: " << mode << endl;
 
