@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <limits>
@@ -12,7 +13,11 @@
 #include <regex>
 #include <set>
 #include <sstream>
+#include <thread>
 #include <vector>
+#include <utility> // pair, make_pair
+#include <algorithm> // min, max
+#include <cmath> // round
 
 #include "exception.hh"
 #include "file_descriptor.hh"
@@ -68,6 +73,15 @@ string extract_url_from_request_line(const string &request_line) {
     elems.push_back(item);
   }
   return elems[1];
+}
+
+string construct_url_from_request_line(const string &request_line, bool is_https) {
+  string scheme = "http://";
+  if (is_https) {
+    scheme = "https://";
+  }
+  string host_key = "HTTP_HOST";
+  return scheme + safe_getenv(host_key.c_str()) + extract_url_from_request_line(request_line);
 }
 
 string remove_trailing_slash(const string &url) {
@@ -134,25 +148,101 @@ string strip_www(const string &url) {
   return retval;
 }
 
+void load_server_think_times(
+		const string &server_think_time_filename, 
+		map<string, int> &server_think_times) {
+  ifstream infile(server_think_time_filename);
+  string line;
+  if (infile.is_open()) {
+    while (getline(infile, line)) {
+      vector<string> splitted_line = split(line, ' ');
+      // We need to strip the scheme and hostname.
+      const string url = splitted_line[0];
+      int think_time = stoi(splitted_line[1]);
+      server_think_times.insert({ url, think_time });
+    }
+    infile.close();
+  }
+}
+
+string get_last_path_token(const string &path) {
+  const auto index = path.rfind("/");
+  string last_token = path;
+  // First, find the last token of the path.
+  if (index != string::npos) {
+    last_token = path.substr(index + 1, path.length());
+  }
+
+  // Second, remove any path parameters.
+  // Anything after first occurence of ";".
+  const auto semicolon_index = last_token.find(";");
+  if (semicolon_index == string::npos) {
+    return last_token;
+  } else {
+    return last_token.substr(0, semicolon_index);
+  }
+}
+
+string get_url_frac_after_semicolon(const string &url) {
+  const auto semicolon_index = url.find(";");
+  if (semicolon_index == string::npos) {
+    return url;
+  } else {
+    return url.substr(semicolon_index + 1, url.length());
+  }
+}
+
+/**
+ * match_headers returns whether two conditions match.
+ *
+ * (1) The scheme of the saved_record matches the scheme of the saved_request.
+ * (2) The values of Host header match.
+ */
+bool match_headers(const MahimahiProtobufs::RequestResponse &saved_record, 
+    const HTTPRequest &saved_request, const bool is_https) {
+  /* match HTTP/HTTPS */
+  if (is_https and (saved_record.scheme() !=
+      MahimahiProtobufs::RequestResponse_Scheme_HTTPS)) {
+    return false;
+  }
+  if ((not is_https) and (saved_record.scheme() !=
+        MahimahiProtobufs::RequestResponse_Scheme_HTTP)) {
+    return false;
+  }
+
+  /* match host header */
+  if (not header_match("HTTP_HOST", "Host", saved_request)) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * match_url returns the matching score of the given URLs.
+ *
+ * Returns a positive score that is the value longest 
+ * common substring starting from the beginning of the string.
+ * This assumes that the path already match.
+ */
 unsigned int match_url(const string &saved_request_url,
                        const string &request_url) {
   /* must match first line up to "?" at least */
-  ofstream myfile;
-  myfile.open("match_url.txt", ios::app);
-  myfile << "returned from strip query mismatch: " << request_url
-         << " saved: " << saved_request_url << endl;
+  // ofstream myfile;
+  // myfile.open("match_url.txt", ios::app);
+  // myfile << "returned from strip query mismatch: " << request_url
+  //        << " saved: " << saved_request_url << endl;
   // if (request_url.find("5o3Rb.5pjsDBCdfFtzlQ8w") != string::npos) {
   //   myfile << "striping url" << endl;
   // }
-  if (strip_query(request_url) != strip_query(saved_request_url)) {
-    // if (request_url.find("5o3Rb.5pjsDBCdfFtzlQ8w") != string::npos &&
-    // saved_request_url.find("5o3Rb.5pjsDBCdfFtzlQ8w") != string::npos) {
-    //   myfile << "returned from strip query mismatch: " << request_url << "
-    //   saved: " << saved_request_url << endl;
-    // }
-    myfile << "\there" << endl;
-    return 0;
-  }
+  // if (strip_query(request_url) != strip_query(saved_request_url)) {
+  //   // if (request_url.find("5o3Rb.5pjsDBCdfFtzlQ8w") != string::npos &&
+  //   // saved_request_url.find("5o3Rb.5pjsDBCdfFtzlQ8w") != string::npos) {
+  //   //   myfile << "returned from strip query mismatch: " << request_url << "
+  //   //   saved: " << saved_request_url << endl;
+  //   // }
+  //   // myfile << "\there" << endl;
+  //   return 0;
+  // }
 
   // if (request_url.find("5o3Rb.5pjsDBCdfFtzlQ8w") != string::npos) {
   //   myfile << "Matched " << request_url << " to " << saved_request_url <<
@@ -169,60 +259,98 @@ unsigned int match_url(const string &saved_request_url,
     }
   }
   // if (request_url.find("5o3Rb.5pjsDBCdfFtzlQ8w") != string::npos) {
-  myfile << "score: " << max_match << endl;
+  // myfile << "score: " << max_match << endl;
   // }
-  myfile.close();
+  // myfile.close();
   return max_match;
 }
 
 /* compare request_line and certain headers of incoming request and stored
  * request */
-unsigned int match_score(const MahimahiProtobufs::RequestResponse &saved_record,
-                         const string &request_line, const bool is_https) {
-  HTTPRequest saved_request(saved_record.request());
-
-  // ofstream myfile;
-  // myfile.open("match_score.txt", ios::app);
-  // if (request_line.find("5o3Rb.5pjsDBCdfFtzlQ8w") != string::npos) {
-  //   myfile << " Before match score: Request Line: " << request_line << "Saved
-  //   request: " << saved_request.first_line() << endl;
-  // }
-
-  /* match HTTP/HTTPS */
-  if (is_https and (saved_record.scheme() !=
-                    MahimahiProtobufs::RequestResponse_Scheme_HTTPS)) {
-    // if (request_line.find("5o3Rb.5pjsDBCdfFtzlQ8w") != string::npos) {
-    //   myfile << "\tFailed HTTPS" << endl;
-    // }
-    return 0;
-  }
-
-  if ((not is_https) and (saved_record.scheme() !=
-                          MahimahiProtobufs::RequestResponse_Scheme_HTTP)) {
-    return 0;
-  }
-
-  /* match host header */
-  if (not header_match("HTTP_HOST", "Host", saved_request)) {
-    // if (request_line.find("5o3Rb.5pjsDBCdfFtzlQ8w") != string::npos) {
-    //   myfile << "\tFailed Host" << endl;
-    // }
-    return 0;
-  }
-
-  /* match user agent */
-  // if ( not header_match( "HTTP_USER_AGENT", "User-Agent", saved_request ) ) {
-  //     return 0;
-  // }
-
+unsigned int match_score(const HTTPRequest &saved_request,
+                         const string &request_line) {
+  // myfile.close();
   string request_url =
       strip_hostname(extract_url_from_request_line(request_line),
                      extract_url_from_request_line(saved_request.first_line()));
   string saved_request_url =
       strip_hostname(extract_url_from_request_line(saved_request.first_line()),
                      extract_url_from_request_line(saved_request.first_line()));
-  // myfile.close();
   return match_url(saved_request_url, request_url);
+}
+
+unsigned int compute_edit_distance(const string &s1,
+                                   const string &s2) {
+  int maxOffset = 500;
+  int maxDistance = 200;
+  int l1 = s1.length();
+  int l2 = s2.length();
+
+  int c1 = 0;  //cursor for string 1
+  int c2 = 0;  //cursor for string 2
+  int lcss = 0;  //largest common subsequence
+  int local_cs = 0; //local common substring
+  int trans = 0;  //number of transpositions ('ab' vs 'ba')
+  vector<pair<int, int>> offset_arr = {};  //offset pair array, for computing the transpositions
+
+  while ((c1 < l1) && (c2 < l2)) {
+    if (s1.at(c1) == s2.at(c2)) {
+      local_cs++;
+      //see if current match is a transposition
+      while (offset_arr.size() > 0) {
+        auto first_offset_el = offset_arr[0];
+        if (c1 <= first_offset_el.first || c2 <= first_offset_el.second) {
+          trans++;
+          break;
+        } else {
+          offset_arr.erase(offset_arr.begin());
+        }
+      }
+      offset_arr.push_back(make_pair(c1, c2));
+    } else {
+      lcss += local_cs;
+      local_cs = 0;
+      if (c1 != c2) {
+        c1 = min(c1, c2);
+        c2 = min(c1, c2);  //using min allows the computation of transpositions
+      }
+      // if matching characters are found, remove 1 from both cursors 
+      // (they get incremented at the end of the loop)
+      // so that we can have only one code block handling matches 
+      for (int i = 0; i < maxOffset && (c1 +i < l1 || c2 + i < l2); i++) {
+        if ((c1 + i < l1) && (s1.at(c1 + i) == s2.at(c2))) {
+          c1 += i - 1; 
+          c2--;
+          break;
+        }
+        if ((c2 + i < l2) && (s1.at(c1) == s2.at(c2 + i))) {
+          c1--;
+          c2 += i - 1;
+          break;
+        }
+      }
+    }
+
+    c1++;
+    c2++;
+
+    if (maxDistance) {
+      int temporaryDistance = max(c1, c2) - lcss + trans;
+      if (temporaryDistance >= maxDistance) 
+        return round(temporaryDistance);
+    }
+
+    // this covers the case where the last match is on the last token in list, 
+    // so that it can compute transpositions correctly
+    if ((c1 >= l1) || (c2 >= l2)) {
+      lcss += local_cs;
+      local_cs = 0;
+      c1 = min(c1, c2);
+      c2 = min(c1, c2);
+    }
+  }
+  lcss += local_cs;
+  return round(max(l1,l2)- lcss +trans); //add the cost of transpositions to the final result
 }
 
 void populate_push_configurations(const string &dependency_file,
@@ -393,9 +521,15 @@ int main(void) {
     SystemCall("chdir", chdir(working_directory.c_str()));
 
     const vector<string> files = list_directory_contents(recording_directory);
+    map<string, int> server_think_times;
+    load_server_think_times("/home/vaspol/Research/MobileWebOptimization/page_load_setup/build/bin/server_think_time_map.txt", server_think_times);
 
-    unsigned int best_score = 0;
-    MahimahiProtobufs::RequestResponse best_match;
+    unsigned int best_mm_score = 0;
+    MahimahiProtobufs::RequestResponse best_mm_match;
+
+    // unsigned int best_edit_score = 1000000; // For actual edit distance.
+    unsigned int best_edit_score = 0; // Quick hack for matching only last token.
+    MahimahiProtobufs::RequestResponse best_edit_match;
 
     for (const auto &filename : files) {
       FileDescriptor fd(SystemCall("open", open(filename.c_str(), O_RDONLY)));
@@ -404,40 +538,101 @@ int main(void) {
         throw runtime_error(filename + ": invalid HTTP request/response");
       }
 
-      unsigned int score = match_score(current_record, request_line, is_https);
-      if (score > best_score) {
-        best_match = current_record;
-        best_score = score;
+      HTTPRequest saved_request(current_record.request());
+      // First, we match the HTTP headers.
+      if (!match_headers(current_record, saved_request, is_https)) {
+        // Headers did not match, skip it.
+        continue;
       }
+
+      // We passed the hostname check. Remove it.
+      string request_url =
+          strip_hostname(extract_url_from_request_line(request_line),
+                         extract_url_from_request_line(saved_request.first_line()));
+      string saved_request_url =
+          strip_hostname(extract_url_from_request_line(saved_request.first_line()),
+                         extract_url_from_request_line(saved_request.first_line()));
+
+      // Next, check if the paths match. If they match, get the Mahimahi match score.
+      string request_url_stripped_query = strip_query(request_url);
+      string saved_request_url_stripped_query = strip_query(saved_request_url);
+      if (request_url_stripped_query == saved_request_url_stripped_query) {
+        unsigned int mm_score = match_url(saved_request_url, request_url);
+        if (mm_score > best_mm_score) {
+          best_mm_match = current_record;
+          best_mm_score = mm_score;
+        }
+        // We found a match using Mahimahi logic. Skip computing edit distance.
+        continue;
+      }
+
+      // Second, if we still haven't found a match using the Mahimahi matching algorithm, 
+      // there is a potential that we cannot find a match. So, also compute the edit distance.
+      if (best_mm_score > 0) {
+        continue;
+      }
+
+      // We still haven't got a match for this resource. Also, try edit distance.
+      string request_url_last_path_token = get_last_path_token(request_url_stripped_query);
+      string saved_request_url_last_path_token = get_last_path_token(saved_request_url_stripped_query);
+      if (request_url_last_path_token == saved_request_url_last_path_token) {
+        // Find match score.
+        string request_url_frac_after_semi = get_url_frac_after_semicolon(request_url);
+        string saved_request_url_frac_after_semi = get_url_frac_after_semicolon(saved_request_url);
+        unsigned int edit_score = match_url(saved_request_url_frac_after_semi, request_url_frac_after_semi);
+        if (edit_score > best_edit_score) {
+          best_edit_match = current_record;
+          best_edit_score = edit_score;
+        }
+      }
+        
+      /* logic for sift4 edit distance. */
+      // unsigned int edit_score = compute_edit_distance(saved_request_url_stripped_query, saved_request_url);
+      // if (edit_score < best_edit_score) {
+      //   if (1.0 * edit_score / saved_request_url_stripped_query.length() >= 0.3) {
+      //     // Ignore if the edit score is greater than 30% of the length.
+      //     continue;
+      //   }
+      //   best_edit_score = edit_score;
+      //   best_edit_match = current_record;
+      // }
     }
 
     // best_score = check_redirect(best_match, best_score);
 
-    if (best_score > 0) { /* give client the best match */
+    if (best_mm_score > 0 || best_edit_score != 1000000) { /* give client the best match */
+      MahimahiProtobufs::RequestResponse best_match = best_mm_match;
+      if (best_mm_score == 0) {
+        best_match = best_edit_match;
+      }
       HTTPRequest request(best_match.request());
       HTTPResponse response(best_match.response());
 
       /* Remove all cache-related headers. */
-      vector<string> headers = {"Cache-control", "Expires", "Last-modified",
-                                "Date",          "Age",     "Etag"};
-      for (auto it = headers.begin(); it != headers.end(); ++it) {
-        response.remove_header(*it);
-      }
+      // vector<string> headers = {"Cache-control", "Expires", "Last-modified",
+      //                           "Date",          "Age",     "Etag"};
+      // for (auto it = headers.begin(); it != headers.end(); ++it) {
+      //   response.remove_header(*it);
+      // }
 
-      /* Add the cache-control header and set to 3600. */
-      response.add_header_after_parsing("Cache-Control: max-age=60");
+      // /* Add the cache-control header and set to 3600. */
+      // response.add_header_after_parsing("Cache-Control: max-age=3600");
       // response.add_header_after_parsing( "Cache-Control: no-cache, no-store,
       // must-revalidate max-age=0" );
 
-      if (dependency_filename != "None") {
-        string scheme = is_https ? "https://" : "http://";
-        string request_url = scheme + request.get_header_value("Host") + path;
-        populate_push_configurations(dependency_filename, request_url, response,
-                                     current_loading_page);
-      }
-
-      if (!response.has_header("Access-Control-Allow-Origin")) {
-        response.add_header_after_parsing("Access-Control-Allow-Origin: *");
+      // if (dependency_filename != "None") {
+      //   string scheme = is_https ? "https://" : "http://";
+      //   string request_url = scheme + request.get_header_value("Host") +
+      //   path;
+      //   populate_push_configurations(dependency_filename, request_url,
+      //   response,
+      //                                current_loading_page);
+      // }
+      // string url = extract_url_from_request_line(request_line);
+      string url = construct_url_from_request_line(request_line, is_https);
+      if (server_think_times.find(url) != server_think_times.end()) {
+        int delay = server_think_times[url];
+        this_thread::sleep_for(chrono::milliseconds(delay));
       }
 
       cout << response.str();
