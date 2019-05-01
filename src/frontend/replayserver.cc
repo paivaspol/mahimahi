@@ -5,14 +5,18 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <cstdio>
+#include <cstdlib>
 #include <chrono>
 #include <fstream>
 #include <iostream>
 #include <limits>
 #include <map>
+#include <memory>
 #include <regex>
 #include <set>
 #include <sstream>
+#include <stdexcept>
 #include <thread>
 #include <vector>
 #include <utility> // pair, make_pair
@@ -35,6 +39,80 @@ string safe_getenv(const string &key) {
     throw runtime_error("missing environment variable: " + key);
   }
   return value;
+}
+
+/* rewrites the jsonp response with the given callback_fn. returns a new string. */
+string rewrite_jsonp_fn(const string &jsonp_response, 
+    const string &callback_fn, 
+    const string &encoding) {
+  auto rand_file_id = rand() % 10000;
+  string encoded_filename = "test.jsonp." + to_string(rand_file_id);
+  if (encoding == "gzip" || encoding == "deflate") {
+    encoded_filename += ".gz";
+  } else if (encoding == "br") {
+    encoded_filename += ".br";
+  }
+  ofstream encoded_resp_file;
+  encoded_resp_file.open(encoded_filename);
+  if (!encoded_resp_file.is_open()) {
+    throw runtime_error("write file failed!");
+  }
+  encoded_resp_file << jsonp_response;
+  encoded_resp_file.close();
+
+  // Call the helper python script.
+  array<char, 128> buffer;
+  string rewritten_filename;
+  string cmd = "python /home/vaspol/Research/MobileWebOptimization/page_load_setup/build/bin/scripts/rewrite_jsonp.py " + encoded_filename + " \"" + callback_fn + "\" " + encoding;
+  unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+  if (!pipe) {
+    throw runtime_error("popen() failed!");
+  }
+  while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+    rewritten_filename += buffer.data();
+  }
+
+  // Strip white-space.
+  rewritten_filename.erase(find_if(rewritten_filename.rbegin(), rewritten_filename.rend(), [](int ch) {
+    return !isspace(ch);
+  }).base(), rewritten_filename.end());
+
+  // Read from the output that the python script created.
+  ifstream rewritten_file(rewritten_filename);
+  if (!rewritten_file.is_open()) {
+    throw runtime_error("read file failed!");
+  }
+  stringstream sstr;
+  sstr << rewritten_file.rdbuf();
+  rewritten_file.close();
+  remove(rewritten_filename.c_str());
+  return sstr.str();
+}
+
+/* Extracts the value of the callback query param. Returns "", if callback does not exists. */
+string extract_callback_fn(const string &url) {
+  /* only the path portion of the URL works as well. */
+  string callback_query_str = "callback=";
+  auto index = url.find(callback_query_str);
+  if (index == string::npos) {
+    callback_query_str = "&callbackPubmine=";
+    index = url.find(callback_query_str);
+  }
+
+  if (index == string::npos) {
+    return "";
+  }
+  const auto nextAmpIndex = url.find("&", index);
+  const auto start_position = index + callback_query_str.length();
+  const auto num_chars = nextAmpIndex - start_position;
+  return url.substr(start_position, num_chars);
+}
+
+string extract_encoding(const HTTPResponse &saved_response) {
+  if (!saved_response.has_header("content-encoding")) {
+    return "[NONE]";
+  }
+  return saved_response.get_header_value("content-encoding");
 }
 
 /* does the actual HTTP header match this stored request? */
@@ -165,6 +243,16 @@ void load_server_think_times(
   }
 }
 
+string remove_path_params(const string &path) {
+  // Second, remove any path parameters.
+  // Anything after first occurence of ";".
+  const auto semicolon_index = path.find(";");
+  if (semicolon_index == string::npos) {
+    return path;
+  }
+  return path.substr(0, semicolon_index);
+}
+
 string get_last_path_token(const string &path) {
   const auto index = path.rfind("/");
   string last_token = path;
@@ -172,15 +260,21 @@ string get_last_path_token(const string &path) {
   if (index != string::npos) {
     last_token = path.substr(index + 1, path.length());
   }
+  return remove_path_params(last_token);
+}
 
-  // Second, remove any path parameters.
-  // Anything after first occurence of ";".
-  const auto semicolon_index = last_token.find(";");
-  if (semicolon_index == string::npos) {
-    return last_token;
-  } else {
-    return last_token.substr(0, semicolon_index);
-  }
+vector<string> get_path_tokens(const string &path) {
+	vector<string> result;
+	size_t pos = 0;
+	string token;
+	string s = path;
+	string delimiter = "/";
+	while ((pos = s.find(delimiter)) != string::npos) {
+			token = s.substr(0, pos);
+			result.push_back(token);
+			s.erase(0, pos + delimiter.length());
+	}
+	return result;
 }
 
 string get_url_frac_after_semicolon(const string &url) {
@@ -527,8 +621,8 @@ int main(void) {
     unsigned int best_mm_score = 0;
     MahimahiProtobufs::RequestResponse best_mm_match;
 
-    // unsigned int best_edit_score = 1000000; // For actual edit distance.
-    unsigned int best_edit_score = 0; // Quick hack for matching only last token.
+    unsigned int best_edit_score = 1000000; // For actual edit distance.
+    // unsigned int best_edit_score = 0; // Quick hack for matching only last token.
     MahimahiProtobufs::RequestResponse best_edit_match;
 
     for (const auto &filename : files) {
@@ -573,29 +667,41 @@ int main(void) {
       }
 
       // We still haven't got a match for this resource. Also, try edit distance.
-      string request_url_last_path_token = get_last_path_token(request_url_stripped_query);
-      string saved_request_url_last_path_token = get_last_path_token(saved_request_url_stripped_query);
-      if (request_url_last_path_token == saved_request_url_last_path_token) {
-        // Find match score.
-        string request_url_frac_after_semi = get_url_frac_after_semicolon(request_url);
-        string saved_request_url_frac_after_semi = get_url_frac_after_semicolon(saved_request_url);
-        unsigned int edit_score = match_url(saved_request_url_frac_after_semi, request_url_frac_after_semi);
-        if (edit_score > best_edit_score) {
-          best_edit_match = current_record;
-          best_edit_score = edit_score;
-        }
+      vector<string> request_url_path_tokens = get_path_tokens(request_url_stripped_query);
+      vector<string> saved_request_url_path_tokens = get_path_tokens(saved_request_url_stripped_query);
+      if (request_url_path_tokens.size() != saved_request_url_path_tokens.size()) {
+        continue;
       }
+
+      string request_url_last_token = remove_path_params(request_url_path_tokens[request_url_path_tokens.size() - 1]);
+      string saved_request_url_last_token = remove_path_params(saved_request_url_path_tokens[saved_request_url_path_tokens.size() - 1]);
+      if (abs(request_url_last_token.length() - saved_request_url_last_token.length() > 2)) {
+        continue;
+      }
+
+      // string request_url_last_path_token = get_last_path_token(request_url_stripped_query);
+      // string saved_request_url_last_path_token = get_last_path_token(saved_request_url_stripped_query);
+      // if (request_url_last_path_token == saved_request_url_last_path_token) {
+      //   // Find match score.
+      //   string request_url_frac_after_semi = get_url_frac_after_semicolon(request_url);
+      //   string saved_request_url_frac_after_semi = get_url_frac_after_semicolon(saved_request_url);
+      //   unsigned int edit_score = match_url(saved_request_url_frac_after_semi, request_url_frac_after_semi);
+      //   if (edit_score > best_edit_score) {
+      //     best_edit_match = current_record;
+      //     best_edit_score = edit_score;
+      //   }
+      // }
         
       /* logic for sift4 edit distance. */
-      // unsigned int edit_score = compute_edit_distance(saved_request_url_stripped_query, saved_request_url);
-      // if (edit_score < best_edit_score) {
-      //   if (1.0 * edit_score / saved_request_url_stripped_query.length() >= 0.3) {
-      //     // Ignore if the edit score is greater than 30% of the length.
-      //     continue;
-      //   }
-      //   best_edit_score = edit_score;
-      //   best_edit_match = current_record;
-      // }
+      unsigned int edit_score = compute_edit_distance(saved_request_url_stripped_query, saved_request_url);
+      if (edit_score < best_edit_score) {
+        // if (1.0 * edit_score / saved_request_url_stripped_query.length() >= 0.3) {
+        //   // Ignore if the edit score is greater than 30% of the length.
+        //   continue;
+        // }
+        best_edit_score = edit_score;
+        best_edit_match = current_record;
+      }
     }
 
     // best_score = check_redirect(best_match, best_score);
@@ -605,8 +711,27 @@ int main(void) {
       if (best_mm_score == 0) {
         best_match = best_edit_match;
       }
+
+      /* Handle JSONP */
+      string callback_fn = extract_callback_fn(path);
+      auto content_length = -1;
+      if (!callback_fn.empty()) {
+        // We have a callback function. Handle JSONP.
+        auto old_jsonp_resp = best_match.response().body();
+        HTTPResponse temp_response(best_match.response());
+        auto encoding = extract_encoding(temp_response);
+        auto new_fn = rewrite_jsonp_fn(old_jsonp_resp, callback_fn, encoding);
+        best_match.mutable_response()->set_body(new_fn);
+        content_length = new_fn.length();
+      }
+
       HTTPRequest request(best_match.request());
       HTTPResponse response(best_match.response());
+
+      if (content_length != -1) {
+        response.remove_header("content-length");
+        response.add_header_after_parsing("Content-Length: " + to_string(content_length));
+      }
 
       /* Remove all cache-related headers. */
       // vector<string> headers = {"Cache-control", "Expires", "Last-modified",
@@ -619,6 +744,24 @@ int main(void) {
       // response.add_header_after_parsing("Cache-Control: max-age=3600");
       // response.add_header_after_parsing( "Cache-Control: no-cache, no-store,
       // must-revalidate max-age=0" );
+      
+      /* Remove CSP */
+      vector<string> headers = { "Content-Security-Policy", "X-XSS-Protection", "allowedHeaders", "Access-Control-Allow-Headers" };
+      for (auto it = headers.begin(); it != headers.end(); ++it) {
+        response.remove_header(*it);
+      }
+      response.add_header_after_parsing("Access-Control-Allow-Headers: *");
+
+
+      /* Modify CORS headers */
+      // vector<string> cors_headers = { "Access-Control-Allow-Origin" };
+      // if (!response.has_header("Access-Control-Allow-Credentials")) {
+      //   // Only add a wildcard CORS access, only if allow credentials is not present.
+      //   for (auto it = cors_headers.begin(); it != cors_headers.end(); ++it) {
+      //       response.remove_header(*it);
+      //   }
+      //   response.add_header_after_parsing("access-control-allow-origin: *");
+      // }
 
       // if (dependency_filename != "None") {
       //   string scheme = is_https ? "https://" : "http://";
@@ -629,6 +772,7 @@ int main(void) {
       //                                current_loading_page);
       // }
       // string url = extract_url_from_request_line(request_line);
+      
       string url = construct_url_from_request_line(request_line, is_https);
       if (server_think_times.find(url) != server_think_times.end()) {
         int delay = server_think_times[url];
